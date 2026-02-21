@@ -1,20 +1,51 @@
 // src/api.js
 import axios from "axios";
 
-// Use environment variable with fallback to localhost for development
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-
 const API = axios.create({
-  baseURL: API_URL,
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/api",
+  timeout: 10000,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-// Automatically attach token to every request
-API.interceptors.request.use((req) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    req.headers.Authorization = `Bearer ${token}`;
+// Request interceptor to add token
+API.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    const expiry = localStorage.getItem("token_expiry");
+    
+    // Check if token is expired
+    if (expiry && new Date().getTime() > parseInt(expiry)) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("token_expiry");
+      localStorage.removeItem("user_role");
+      window.location.href = "/login";
+      return Promise.reject("Token expired");
+    }
+    
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return req;
-});
+);
+
+// Response interceptor for error handling
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("token_expiry");
+      localStorage.removeItem("user_role");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default API;
