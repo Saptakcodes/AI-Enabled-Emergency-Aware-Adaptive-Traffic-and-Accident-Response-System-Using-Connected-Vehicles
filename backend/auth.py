@@ -1,6 +1,7 @@
+# backend/auth.py
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from database import users_collection
+from database import users_collection, USING_MEMORY_DB
 from models import UserSignup, UserLogin
 from passlib.context import CryptContext
 from jose import jwt, JWTError
@@ -36,6 +37,30 @@ router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
+# =========================
+# CREATE TEST USER (for in-memory mode)
+# =========================
+if USING_MEMORY_DB:
+    try:
+        # Check if test user exists
+        test_user = users_collection.find_one({"email": "test@example.com"})
+        if not test_user:
+            # Create test user
+            test_user_data = {
+                "name": "Test User",
+                "email": "test@example.com",
+                "phone": "1234567890",
+                "vehicleNumber": "TEST001",
+                "vehicleType": "normal",
+                "password": pwd_context.hash("password123"),
+                "created_at": datetime.utcnow()
+            }
+            users_collection.insert_one(test_user_data)
+            print("✅ Test user created: test@example.com / password123")
+        else:
+            print("✅ Test user already exists")
+    except Exception as e:
+        print(f"⚠️ Could not create test user: {e}")
 
 # =========================
 # PASSWORD FUNCTIONS
@@ -83,8 +108,20 @@ def signup(user: UserSignup):
     print("="*50)
     print(f"📧 Email: {user.email}")
     print(f"👤 Name: {user.name}")
-    print(f"📊 Database: {users_collection.database.name}")
-    print(f"📁 Collection: {users_collection.name}")
+    
+    # Safely print database info
+    try:
+        if hasattr(users_collection, 'database') and users_collection.database:
+            print(f"📊 Database: {users_collection.database.name}")
+        else:
+            print(f"📊 Database: memory_db")
+    except:
+        print(f"📊 Database: memory_db")
+    
+    try:
+        print(f"📁 Collection: {users_collection.name}")
+    except:
+        print(f"📁 Collection: users")
     
     # Check if user exists
     existing_user = users_collection.find_one({"email": user.email})
@@ -108,13 +145,13 @@ def signup(user: UserSignup):
     
     print(f"📝 User dict prepared: {user_dict['email']}")
     
-    # Insert user - THIS CREATES THE DATABASE IN ATLAS
+    # Insert user
     try:
         result = users_collection.insert_one(user_dict)
         print(f"✅ SUCCESS! User inserted with ID: {result.inserted_id}")
         
         # Verify insertion
-        saved_user = users_collection.find_one({"_id": result.inserted_id})
+        saved_user = users_collection.find_one({"email": user.email})
         if saved_user:
             print(f"✅ Verified: User found in database")
             print(f"📊 Database now has {users_collection.count_documents({})} total users")
@@ -126,41 +163,41 @@ def signup(user: UserSignup):
     except Exception as e:
         print(f"❌ ERROR inserting user: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
 # =========================
 # LOGIN
 # =========================
 
 @router.post("/login")
 def login(user: UserLogin):
+    print("\n" + "="*50)
+    print("🔍 LOGIN ATTEMPT")
+    print("="*50)
+    print(f"📧 Email: {user.email}")
 
     db_user = users_collection.find_one({"email": user.email})
     if not db_user:
-        raise HTTPException(status_code=400, detail="Invalid email")
+        print(f"❌ User not found: {user.email}")
+        raise HTTPException(status_code=400, detail="Invalid email or password")
+
+    print(f"✅ User found")
 
     if not verify_password(user.password, db_user["password"]):
-        raise HTTPException(status_code=400, detail="Invalid password")
+        print(f"❌ Invalid password")
+        raise HTTPException(status_code=400, detail="Invalid email or password")
+
+    print(f"✅ Password verified")
 
     token = create_access_token({
         "email": db_user["email"],
         "vehicleType": db_user["vehicleType"]
     })
 
+    print(f"✅ Token created")
+    print("="*50)
+
     return {
         "access_token": token,
         "token_type": "bearer"
-    }
-
-
-# =========================
-# PROTECTED ROUTES
-# =========================
-
-@router.get("/protected")
-def protected_route(current_user: dict = Depends(get_current_user)):
-    return {
-        "message": "Access granted",
-        "user": current_user
     }
 
 

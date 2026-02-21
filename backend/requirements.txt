@@ -1,0 +1,31 @@
+# backend/requirements.txt
+
+# FastAPI Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Database
+pymongo==4.5.0
+motor==3.3.1
+dnspython==2.4.0
+
+# Authentication & Security (Includes JWT!)
+python-jose[cryptography]==3.3.0  # ← This is JWT
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-multipart==0.0.6
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# CORS & Middleware
+httpx==0.25.0
+
+# Data Validation
+pydantic==2.4.2
+pydantic[email]==2.4.2
+email-validator==2.1.0
+
+# Utilities
+certifi==2024.2.2
+requests==2.31.0
