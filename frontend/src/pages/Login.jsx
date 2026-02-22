@@ -9,26 +9,26 @@ import AuthLayout from "../components/auth/AuthLayout";
 const Login = () => {
   const navigate = useNavigate();
 
-  // ✅ STATE from OLD Login.jsx (EXACT match)
+  // STATE from OLD Login.jsx (EXACT match)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
-  // ✅ UI state (NEW - for loading and error)
+  // UI state (for loading and error)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ✅ handleChange from OLD Login.jsx (EXACT match)
+  // handleChange from OLD Login.jsx (EXACT match)
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
-    setError(""); // Clear error when user types (UI improvement)
+    setError(""); // Clear error when user types
   };
 
-  // ✅ handleSubmit from OLD Login.jsx (EXACT match)
+  // Updated handleSubmit to store user data
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -38,7 +38,17 @@ const Login = () => {
     try {
       const res = await API.post("/login", formData);
 
+      // Store token
       localStorage.setItem("token", res.data.access_token);
+      
+      // Store user data from login response
+      const userData = {
+        name: res.data.user_name || formData.email.split('@')[0],
+        role: res.data.user_role || 'normal',
+        email: formData.email,
+        avatar: `https://ui-avatars.com/api/?name=${res.data.user_name || formData.email.split('@')[0]}&background=3B82F6&color=fff&size=128`
+      };
+      localStorage.setItem("user", JSON.stringify(userData));
 
       alert("Login successful 🚀");
       navigate("/dashboard");
@@ -69,7 +79,7 @@ const Login = () => {
           </p>
         </div>
 
-        {/* ✅ Error Message (NEW UI) */}
+        {/* Error Message */}
         {error && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -81,9 +91,9 @@ const Login = () => {
           </motion.div>
         )}
 
-        {/* ✅ Form with NEW UI but OLD logic */}
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email Field - NEW UI */}
+          {/* Email Field */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Email Address
@@ -102,7 +112,7 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Password Field - NEW UI */}
+          {/* Password Field */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Password
@@ -121,7 +131,7 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Submit Button - NEW UI with loading state */}
+          {/* Submit Button */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -142,7 +152,7 @@ const Login = () => {
             )}
           </motion.button>
 
-          {/* ✅ Emergency Services Indicator (NEW UI - purely visual) */}
+          {/* Emergency Services Indicator */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300"></div>
@@ -168,7 +178,7 @@ const Login = () => {
           </div>
         </form>
 
-        {/* ✅ Signup Link - NEW UI */}
+        {/* Signup Link */}
         <p className="text-center mt-8 text-gray-600">
           New to ALERT?{" "}
           <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-semibold hover:underline">

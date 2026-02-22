@@ -37,6 +37,37 @@ const Dashboard = () => {
   const [mapType, setMapType] = useState('emergency');
   const [selectedIncident, setSelectedIncident] = useState(null);
   
+  // User data from localStorage
+  const [userData, setUserData] = useState({
+    name: 'User',
+    email: '',
+    role: 'normal',
+    avatar: '',
+    vehicleNumber: '',
+    phone: ''
+  });
+
+  // Load user data from localStorage
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUserData({
+          name: parsedUser.name || 'User',
+          email: parsedUser.email || '',
+          role: parsedUser.role || 'normal',
+          avatar: parsedUser.avatar || `https://ui-avatars.com/api/?name=${parsedUser.name || 'User'}&background=3B82F6&color=fff&size=128`,
+          vehicleNumber: parsedUser.vehicleNumber || '',
+          phone: parsedUser.phone || ''
+        });
+        setUserRole(parsedUser.role || 'normal');
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+  }, []);
+
   // Check authentication
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -211,6 +242,7 @@ const Dashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     navigate("/");
   };
 
@@ -282,15 +314,28 @@ const Dashboard = () => {
                   className="flex items-center space-x-1 sm:space-x-2 hover:bg-gray-700 rounded-lg p-1.5 sm:p-2 transition-colors"
                 >
                   <div className="relative">
-                    <FaUserCircle className="text-2xl sm:text-3xl text-gray-300" />
+                    {userData.avatar ? (
+                      <img 
+                        src={userData.avatar} 
+                        alt={userData.name}
+                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-gray-600"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = `https://ui-avatars.com/api/?name=${userData.name}&background=3B82F6&color=fff&size=128`;
+                        }}
+                      />
+                    ) : (
+                      <FaUserCircle className="text-2xl sm:text-3xl text-gray-300" />
+                    )}
                     <span className={`absolute bottom-0 right-0 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
-                      userRole === 'emergency' ? 'bg-red-500' : 
-                      userRole === 'admin' ? 'bg-purple-500' : 'bg-green-500'
+                      userData.role === 'ambulance' ? 'bg-red-500' : 
+                      userData.role === 'police' ? 'bg-blue-500' :
+                      userData.role === 'fire' ? 'bg-orange-500' : 'bg-green-500'
                     }`}></span>
                   </div>
                   <div className="hidden md:block text-left">
-                    <p className="text-xs sm:text-sm font-semibold">John Doe</p>
-                    <p className="text-xs text-gray-400 capitalize">{userRole}</p>
+                    <p className="text-xs sm:text-sm font-semibold">{userData.name}</p>
+                    <p className="text-xs text-gray-400 capitalize">{userData.role}</p>
                   </div>
                   <FaChevronDown className="text-xs text-gray-400" />
                 </button>
@@ -299,6 +344,12 @@ const Dashboard = () => {
                 {showUserMenu && (
                   <div className="absolute right-0 mt-2 w-40 sm:w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50">
                     <div className="py-1">
+                      <div className="px-3 sm:px-4 py-2 border-b border-gray-700">
+                        <p className="text-xs text-gray-400 truncate">{userData.email}</p>
+                        {userData.vehicleNumber && (
+                          <p className="text-xs text-gray-500 mt-1">Vehicle: {userData.vehicleNumber}</p>
+                        )}
+                      </div>
                       <button className="w-full text-left px-3 sm:px-4 py-2 hover:bg-gray-700 flex items-center space-x-2 text-sm">
                         <FaUser className="text-xs" />
                         <span>Profile</span>
@@ -733,19 +784,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Role Selector (for demo purposes) */}
-      <div className="fixed bottom-4 sm:bottom-6 left-4 sm:left-6 bg-gray-800 rounded-lg shadow-xl border border-gray-700 p-1.5 sm:p-2 z-50">
-        <select 
-          value={userRole}
-          onChange={(e) => setUserRole(e.target.value)}
-          className="bg-gray-700 text-white text-xs sm:text-sm rounded-lg px-2 sm:px-3 py-1 sm:py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="normal">Normal</option>
-          <option value="emergency">Emergency</option>
-          <option value="admin">Admin</option>
-        </select>
       </div>
     </div>
   );

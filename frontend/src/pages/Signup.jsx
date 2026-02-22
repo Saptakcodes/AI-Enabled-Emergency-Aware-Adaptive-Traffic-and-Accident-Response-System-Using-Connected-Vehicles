@@ -12,7 +12,7 @@ import AuthLayout from "../components/auth/AuthLayout";
 const Signup = () => {
   const navigate = useNavigate();
   
-  // ✅ STATE from OLD Signup.jsx (EXACT match)
+  // STATE from OLD Signup.jsx (EXACT match)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -22,12 +22,12 @@ const Signup = () => {
     password: "",
   });
 
-  // ✅ UI state (NEW - for multi-step and loading)
+  // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [step, setStep] = useState(1);
 
-  // ✅ UI Icons and colors (NEW - for visual)
+  // UI Icons and colors
   const vehicleIcons = {
     normal: <Car className="w-5 h-5" />,
     ambulance: <Truck className="w-5 h-5" />,
@@ -42,16 +42,16 @@ const Signup = () => {
     fire: "bg-orange-50 text-orange-700 border-orange-300",
   };
 
-  // ✅ handleChange from OLD Signup.jsx (EXACT match)
+  // handleChange from OLD Signup.jsx (EXACT match)
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
-    setError(""); // Clear error when user types
+    setError("");
   };
 
-  // ✅ Validation for multi-step (NEW UI feature)
+  // Validation for multi-step
   const validateStep = () => {
     if (step === 1) {
       if (!formData.name || !formData.email || !formData.phone) {
@@ -79,7 +79,7 @@ const Signup = () => {
     return true;
   };
 
-  // ✅ Multi-step navigation (NEW UI feature)
+  // Multi-step navigation
   const nextStep = () => {
     if (validateStep()) {
       setStep(step + 1);
@@ -90,7 +90,7 @@ const Signup = () => {
     setStep(step - 1);
   };
 
-  // ✅ handleSubmit from OLD Signup.jsx (EXACT match)
+  // Updated handleSubmit with auto-login
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -98,11 +98,38 @@ const Signup = () => {
     setError("");
 
     try {
-      // ✅ Sending EXACT same data structure as old Signup.jsx
+      // Send signup request
       await API.post("/signup", formData);
 
-      alert("Signup successful 🎉");
-      navigate("/login");
+      // After signup, automatically login
+      try {
+        const loginRes = await API.post("/login", {
+          email: formData.email,
+          password: formData.password
+        });
+
+        // Store token
+        localStorage.setItem("token", loginRes.data.access_token);
+        
+        // Store user data
+        const userData = {
+          name: formData.name,
+          role: loginRes.data.user_role || formData.vehicleType,
+          email: formData.email,
+          phone: formData.phone,
+          vehicleNumber: formData.vehicleNumber,
+          vehicleType: formData.vehicleType,
+          avatar: `https://ui-avatars.com/api/?name=${formData.name}&background=3B82F6&color=fff&size=128`
+        };
+        localStorage.setItem("user", JSON.stringify(userData));
+
+        alert("Signup successful! Redirecting to dashboard... 🎉");
+        navigate("/dashboard");
+      } catch (loginError) {
+        // If auto-login fails, just go to login page
+        alert("Signup successful! Please login. 🎉");
+        navigate("/login");
+      }
 
     } catch (error) {
       setError(error.response?.data?.detail || "Signup failed");
@@ -130,7 +157,7 @@ const Signup = () => {
           </p>
         </div>
 
-        {/* ✅ Progress Steps (NEW UI) */}
+        {/* Progress Steps */}
         <div className="flex items-center justify-between mb-8">
           {[1, 2, 3].map((i) => (
             <div key={i} className="flex items-center flex-1">
@@ -152,7 +179,7 @@ const Signup = () => {
           ))}
         </div>
 
-        {/* ✅ Error Message (NEW UI) */}
+        {/* Error Message */}
         {error && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -166,7 +193,7 @@ const Signup = () => {
 
         <form onSubmit={handleSubmit}>
           <AnimatePresence mode="wait">
-            {/* ✅ Step 1: Personal Info (NEW UI) */}
+            {/* Step 1: Personal Info */}
             {step === 1 && (
               <motion.div
                 key="step1"
@@ -231,7 +258,7 @@ const Signup = () => {
               </motion.div>
             )}
 
-            {/* ✅ Step 2: Vehicle Info (NEW UI) */}
+            {/* Step 2: Vehicle Info */}
             {step === 2 && (
               <motion.div
                 key="step2"
@@ -313,7 +340,7 @@ const Signup = () => {
               </motion.div>
             )}
 
-            {/* ✅ Step 3: Review (NEW UI) */}
+            {/* Step 3: Review */}
             {step === 3 && (
               <motion.div
                 key="step3"
@@ -352,7 +379,7 @@ const Signup = () => {
             )}
           </AnimatePresence>
 
-          {/* ✅ Navigation Buttons (NEW UI) */}
+          {/* Navigation Buttons */}
           <div className="flex space-x-4 mt-8">
             {step > 1 && (
               <motion.button
@@ -400,7 +427,7 @@ const Signup = () => {
           </div>
         </form>
 
-        {/* ✅ Login Link */}
+        {/* Login Link */}
         <p className="text-center mt-8 text-gray-600">
           Already have an account?{" "}
           <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold hover:underline">
