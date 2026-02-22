@@ -1,0 +1,25 @@
+{
+  "name": "ALERT app - Emergency Traffic Response",
+  "short_name": "ALERT",
+  "description": "AI-Enabled Emergency-Aware Adaptive Traffic and Accident Response System",
+  "theme_color": "#2563eb",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
