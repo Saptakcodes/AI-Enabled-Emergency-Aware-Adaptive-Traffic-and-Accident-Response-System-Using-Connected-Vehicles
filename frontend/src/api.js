@@ -1,4 +1,4 @@
-// src/api.js
+// src/services/api.js
 import axios from "axios";
 
 // Use environment variable with fallback to localhost for development
