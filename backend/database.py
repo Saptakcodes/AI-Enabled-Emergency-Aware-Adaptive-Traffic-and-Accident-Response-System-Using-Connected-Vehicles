@@ -4,7 +4,6 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 import sys
 import certifi
-import ssl
 
 load_dotenv()
 
@@ -13,51 +12,92 @@ print("📦 DATABASE INITIALIZATION")
 print("="*60)
 
 MONGO_URL = os.getenv("MONGO_URL")
+MONGO_URL_BLACKBOX = os.getenv("MONGO_URL_BLACKBOX")
+
 if not MONGO_URL:
     print("❌ CRITICAL: MONGO_URL not found in .env file!")
     sys.exit(1)
 
+if not MONGO_URL_BLACKBOX:
+    print("❌ CRITICAL: MONGO_URL_BLACKBOX not found in .env file!")
+    sys.exit(1)
+
 print(f"🔌 Connecting to MongoDB Atlas...")
 
-# Global variables
+# ===============================
+# AUTHENTICATION DATABASE
+# ===============================
+
 client = None
 db = None
 users_collection = None
 
 try:
-    # Create Motor client with certifi CA bundle
     client = AsyncIOMotorClient(
         MONGO_URL,
         serverSelectionTimeoutMS=30000,
         connectTimeoutMS=30000,
         socketTimeoutMS=30000,
-        tlsCAFile=certifi.where(),  # Use certifi's CA bundle
+        tlsCAFile=certifi.where(),
         retryWrites=True,
         retryReads=True
     )
-    
-    # Get database name from URL
-    if "authentication_db" in MONGO_URL:
-        db_name = "authentication_db"
-    else:
-        db_name = "traffic_db"
-    
-    db = client[db_name]
+
+    db = client["authentication_db"]
     users_collection = db["users"]
-    
-    print("✅ MongoDB client created successfully")
-    print(f"✅ Database: {db_name}")
-    print(f"✅ Collection: users")
-    
+
+    print("✅ Authentication DB Connected")
+    print("✅ Collection: users")
+
 except Exception as e:
     print(f"\n❌ Failed to create MongoDB client: {e}")
-    print("\n🔧 Troubleshooting steps:")
-    print("1. Check if your MongoDB Atlas cluster is running")
-    print("2. Go to Network Access and add your IP")
-    print("3. Try: pip install --upgrade pymongo motor certifi")
-    print("4. Restart your computer and try again")
     sys.exit(1)
+
+
+# ===============================
+# BLACKBOX DATABASE
+# ===============================
+
+blackbox_db = None
+devices_collection = None
+live_sensor_collection = None
+accident_collection = None
+
+try:
+
+    blackbox_client = AsyncIOMotorClient(
+        MONGO_URL_BLACKBOX,
+        serverSelectionTimeoutMS=30000,
+        connectTimeoutMS=30000,
+        socketTimeoutMS=30000,
+        tlsCAFile=certifi.where(),
+        retryWrites=True,
+        retryReads=True
+    )
+
+    blackbox_db = blackbox_client["blackbox_data"]
+
+    devices_collection = blackbox_db["devices"]
+    live_sensor_collection = blackbox_db["live_sensor_data"]
+    accident_collection = blackbox_db["accident_records"]
+
+    print("✅ Blackbox DB Connected")
+    print("✅ Collections:")
+    print("   - devices")
+    print("   - live_sensor_data")
+    print("   - accident_records")
+
+except Exception as e:
+    print(f"⚠️ Blackbox DB warning: {e}")
 
 print("="*60 + "\n")
 
-__all__ = ['client', 'db', 'users_collection']
+__all__ = [
+    'client',
+    'db',
+    'users_collection',
+    'blackbox_db',
+    'devices_collection',
+    'live_sensor_collection',
+    'accident_collection'
+]
