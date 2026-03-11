@@ -1,5 +1,5 @@
 // src/components/LiveMap.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -12,7 +12,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 });
 
-// Custom icons
+// Custom icons (using colored markers)
 const vehicleIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -31,80 +31,107 @@ const accidentIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-// Component to recenter map when center changes
+// Helper to compare coordinates (ignores small floating point differences)
+const isSameCoords = (c1, c2) => {
+  if (!c1 || !c2) return false;
+  const threshold = 0.0001; // ~10 meters
+  return Math.abs(c1[0] - c2[0]) < threshold && Math.abs(c1[1] - c2[1]) < threshold;
+};
+
+// Component to recenter map only if center actually changed
 function ChangeView({ center }) {
   const map = useMap();
-  map.setView(center, map.getZoom());
+  const prevCenterRef = useRef(center);
+
+  useEffect(() => {
+    if (!isSameCoords(prevCenterRef.current, center)) {
+      map.setView(center, map.getZoom());
+      prevCenterRef.current = center;
+    }
+  }, [center, map]);
+
   return null;
 }
 
+// Optimize marker rendering with React.memo
+const VehicleMarker = React.memo(({ vehicle, onClick }) => (
+  <Marker
+    position={[vehicle.latitude, vehicle.longitude]}
+    icon={vehicleIcon}
+    eventHandlers={{ click: () => onClick(vehicle, 'vehicle') }}
+  >
+    <Popup>
+      <div className="p-2 min-w-[200px]">
+        <h3 className="font-semibold text-blue-600 mb-1">🚗 Vehicle {vehicle.blackbox_id}</h3>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div><span className="text-gray-500">Speed:</span> {vehicle.speed_kmph} km/h</div>
+          <div><span className="text-gray-500">Accel:</span> {vehicle.acceleration_g} g</div>
+          <div><span className="text-gray-500">Tilt:</span> {vehicle.tilt_degree}°</div>
+          <div><span className="text-gray-500">Fire:</span> {vehicle.fire_detected ? '🔥 Yes' : 'No'}</div>
+        </div>
+        <a
+          href={`https://www.google.com/maps?q=${vehicle.latitude},${vehicle.longitude}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-500 hover:underline text-xs mt-2 inline-block"
+        >
+          Open in Google Maps
+        </a>
+      </div>
+    </Popup>
+  </Marker>
+));
+
+const AccidentMarker = React.memo(({ accident, onClick }) => (
+  <Marker
+    position={[accident.latitude, accident.longitude]}
+    icon={accidentIcon}
+    eventHandlers={{ click: () => onClick(accident, 'accident') }}
+  >
+    <Popup>
+      <div className="p-2 min-w-[200px]">
+        <h3 className="font-semibold text-red-600 mb-1">🚨 Accident</h3>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div><span className="text-gray-500">Speed:</span> {accident.speed_kmph} km/h</div>
+          <div><span className="text-gray-500">Accel:</span> {accident.acceleration_g} g</div>
+          <div><span className="text-gray-500">Tilt:</span> {accident.tilt_degree}°</div>
+          <div><span className="text-gray-500">Fire:</span> {accident.fire_detected ? 'Yes' : 'No'}</div>
+          <div className="col-span-2"><span className="text-gray-500">Time:</span> {new Date(accident.timestamp).toLocaleTimeString()}</div>
+        </div>
+        <a
+          href={`https://www.google.com/maps?q=${accident.latitude},${accident.longitude}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-500 hover:underline text-xs mt-2 inline-block"
+        >
+          Open in Google Maps
+        </a>
+      </div>
+    </Popup>
+  </Marker>
+));
+
 const LiveMap = ({ vehicles = [], accidents = [], center = [22.5726, 88.3639], zoom = 14, onMarkerClick }) => {
+  // Use a light-themed tile layer for Google Maps look
+  const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+  const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; CartoDB';
+
   return (
     <div className="relative h-full w-full">
       <MapContainer
         center={center}
         zoom={zoom}
         style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}
+        zoomControl={true}
+        scrollWheelZoom={true}
       >
         <ChangeView center={center} />
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <TileLayer url={tileLayerUrl} attribution={attribution} />
         {vehicles.map(vehicle => (
-          <Marker
-            key={vehicle.blackbox_id}
-            position={[vehicle.latitude, vehicle.longitude]}
-            icon={vehicleIcon}
-            eventHandlers={{
-              click: () => onMarkerClick && onMarkerClick(vehicle, 'vehicle')
-            }}
-          >
-            <Popup>
-              <div className="p-1">
-                <b>Vehicle {vehicle.blackbox_id}</b><br/>
-                Speed: {vehicle.speed_kmph} km/h<br/>
-                Acceleration: {vehicle.acceleration_g} g<br/>
-                Tilt: {vehicle.tilt_degree}°<br/>
-                Fire: {vehicle.fire_detected ? '🔥 Yes' : 'No'}<br/>
-                <a
-                  href={`https://www.google.com/maps?q=${vehicle.latitude},${vehicle.longitude}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline text-xs mt-1 inline-block"
-                >
-                  Open in Google Maps
-                </a>
-              </div>
-            </Popup>
-          </Marker>
+          <VehicleMarker key={vehicle.blackbox_id} vehicle={vehicle} onClick={onMarkerClick} />
         ))}
         {accidents.map(accident => (
-          <Marker
-            key={accident._id}
-            position={[accident.latitude, accident.longitude]}
-            icon={accidentIcon}
-            eventHandlers={{
-              click: () => onMarkerClick && onMarkerClick(accident, 'accident')
-            }}
-          >
-            <Popup>
-              <div className="p-1">
-                <b className="text-red-600">Accident</b><br/>
-                Speed: {accident.speed_kmph} km/h<br/>
-                Tilt: {accident.tilt_degree}°<br/>
-                Fire: {accident.fire_detected ? 'Yes' : 'No'}<br/>
-                <a
-                  href={`https://www.google.com/maps?q=${accident.latitude},${accident.longitude}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline text-xs mt-1 inline-block"
-                >
-                  Open in Google Maps
-                </a>
-              </div>
-            </Popup>
-          </Marker>
+          <AccidentMarker key={accident._id} accident={accident} onClick={onMarkerClick} />
         ))}
       </MapContainer>
 
