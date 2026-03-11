@@ -11,12 +11,12 @@ const containerStyle = {
 };
 
 const defaultCenter = {
-  lat: 22.5726,  // default to Kolkata (you can change)
+  lat: 22.5726,
   lng: 88.3639
 };
 
 const iconMap = {
-  ambulance: '/ambulance-icon.png', // You need to provide these icons or use Google's default
+  ambulance: '/ambulance-icon.png',
   police: '/police-icon.png',
   fire: '/fire-icon.png',
   normal: '/car-icon.png',
@@ -28,11 +28,14 @@ const LiveMap = ({ vehicles = [], accidents = [], center = defaultCenter, zoom =
   const [selectedAccident, setSelectedAccident] = useState(null);
 
   const onLoad = useCallback((map) => {
-    // You can do additional map setup here if needed
+    // Optional map setup
   }, []);
 
   return (
-    <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}>
+    <LoadScript
+      googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+      onError={(error) => console.error("❌ Google Maps load error:", error)}
+    >
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={center}
@@ -46,20 +49,20 @@ const LiveMap = ({ vehicles = [], accidents = [], center = defaultCenter, zoom =
             position={{ lat: vehicle.latitude, lng: vehicle.longitude }}
             icon={{
               url: iconMap[vehicle.vehicle_type] || iconMap.normal,
-              scaledSize: new window.google.maps.Size(30, 30)
+              scaledSize: { width: 30, height: 30 }   // ✅ fixed: plain object instead of google.maps.Size
             }}
             onClick={() => setSelectedVehicle(vehicle)}
           />
         ))}
 
-        {/* Accident Markers (maybe bigger or red) */}
+        {/* Accident Markers */}
         {accidents.map((accident) => (
           <Marker
             key={accident._id}
             position={{ lat: accident.latitude, lng: accident.longitude }}
             icon={{
               url: iconMap.accident,
-              scaledSize: new window.google.maps.Size(40, 40)
+              scaledSize: { width: 40, height: 40 }   // ✅ fixed
             }}
             onClick={() => setSelectedAccident(accident)}
           />
