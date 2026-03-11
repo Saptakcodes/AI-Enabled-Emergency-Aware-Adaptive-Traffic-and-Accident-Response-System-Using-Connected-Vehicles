@@ -20,7 +20,7 @@ const Dashboard = () => {
   const [liveTime, setLiveTime] = useState(new Date());
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [mapType, setMapType] = useState('roadmap');
+  const [mapViewMode, setMapViewMode] = useState('interactive'); // 'interactive' or 'simple'
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [mapCenter, setMapCenter] = useState([22.5726, 88.3639]);
 
@@ -332,11 +332,17 @@ const Dashboard = () => {
                 LIVE MAP
               </h2>
               <div className="flex space-x-2">
-                <button onClick={() => setMapType('roadmap')} className={`px-3 py-1 rounded-lg text-sm ${mapType === 'roadmap' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                  Road
+                <button
+                  onClick={() => setMapViewMode('interactive')}
+                  className={`px-3 py-1 rounded-lg text-sm ${mapViewMode === 'interactive' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                >
+                  Interactive
                 </button>
-                <button onClick={() => setMapType('satellite')} className={`px-3 py-1 rounded-lg text-sm ${mapType === 'satellite' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                  <FaSatellite className="inline mr-1" /> Sat
+                <button
+                  onClick={() => setMapViewMode('simple')}
+                  className={`px-3 py-1 rounded-lg text-sm ${mapViewMode === 'simple' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                >
+                  Satellite
                 </button>
               </div>
             </div>
@@ -346,6 +352,7 @@ const Dashboard = () => {
                 accidents={accidents}
                 center={mapCenter}
                 onMarkerClick={handleMarkerClick}
+                mapType={mapViewMode}
               />
             </div>
             {selectedMarker && (

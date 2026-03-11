@@ -111,8 +111,31 @@ const AccidentMarker = React.memo(({ accident, onClick }) => (
   </Marker>
 ));
 
-const LiveMap = ({ vehicles = [], accidents = [], center = [22.5726, 88.3639], zoom = 14, onMarkerClick }) => {
-  // Use a light-themed tile layer for Google Maps look
+// Google Maps iframe view (simple, no markers)
+const GoogleMapsView = ({ center, zoom }) => {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    return <div className="h-full w-full flex items-center justify-center bg-gray-100 text-gray-500">Google Maps API key missing</div>;
+  }
+  const mapSrc = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${center[0]},${center[1]}&zoom=${zoom}&maptype=satellite`;
+  return (
+    <iframe
+      src={mapSrc}
+      className="w-full h-full rounded-lg border-0"
+      allowFullScreen
+      loading="lazy"
+      referrerPolicy="no-referrer-when-downgrade"
+      title="Google Maps"
+    />
+  );
+};
+
+const LiveMap = ({ vehicles = [], accidents = [], center = [22.5726, 88.3639], zoom = 14, onMarkerClick, mapType = 'interactive' }) => {
+  if (mapType === 'simple') {
+    return <GoogleMapsView center={center} zoom={zoom} />;
+  }
+
+  // Interactive Leaflet map
   const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
   const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; CartoDB';
 
