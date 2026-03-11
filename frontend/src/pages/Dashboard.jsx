@@ -7,9 +7,9 @@ import {
   FaAmbulance, FaBell, FaUserCircle, FaMapMarkerAlt, FaTrafficLight,
   FaExclamationTriangle, FaCheckCircle, FaClock, FaChartLine, FaCog,
   FaSignOutAlt, FaUser, FaPhoneAlt, FaFileAlt, FaChevronDown,
-  FaSatellite, FaCar, FaFire, FaShieldAlt
+  FaSatellite, FaCar, FaFire, FaShieldAlt, FaList, FaTachometerAlt
 } from 'react-icons/fa';
-import { MdEmergency, MdHealthAndSafety, MdRefresh } from 'react-icons/md';
+import { MdEmergency, MdHealthAndSafety, MdRefresh, MdWarning } from 'react-icons/md';
 import { IoMdWarning, IoMdInformation } from 'react-icons/io';
 import { BsLightningChargeFill } from 'react-icons/bs';
 import { GiPoliceBadge, GiFireExtinguisher } from 'react-icons/gi';
@@ -20,20 +20,23 @@ const Dashboard = () => {
   const [liveTime, setLiveTime] = useState(new Date());
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [mapViewMode, setMapViewMode] = useState('interactive'); // 'interactive' or 'simple'
+  const [mapViewMode, setMapViewMode] = useState('interactive');
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [mapCenter, setMapCenter] = useState([22.5726, 88.3639]);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   // Real data states
   const [vehicles, setVehicles] = useState([]);
   const [accidents, setAccidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [notifications, setNotifications] = useState([]);
 
   // Stats
   const [stats, setStats] = useState({
-    activeEmergencies: 0,
-    responseTime: 2.5,
+    totalVehicles: 0,
+    activeVehicles: 0,
+    emergencyVehicles: 0,
     todayIncidents: 0,
     yesterdayIncidents: 0,
     systemHealth: 98
@@ -41,8 +44,9 @@ const Dashboard = () => {
 
   // Animated stats
   const [animatedStats, setAnimatedStats] = useState({
-    activeEmergencies: 0,
-    responseTime: 0,
+    totalVehicles: 0,
+    activeVehicles: 0,
+    emergencyVehicles: 0,
     todayIncidents: 0,
     systemHealth: 0
   });
@@ -70,6 +74,7 @@ const Dashboard = () => {
         ]);
         setVehicles(liveRes.data);
         setAccidents(accidentsRes.data);
+        setLastUpdated(new Date());
         setError(null);
       } catch (err) {
         console.error('Failed to fetch data', err);
@@ -83,6 +88,36 @@ const Dashboard = () => {
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Generate notifications from critical events
+  useEffect(() => {
+    const newNotifications = [];
+    // Add notification for each new accident (simplified: last 5 minutes)
+    const fiveMinAgo = new Date(Date.now() - 5 * 60000);
+    accidents.forEach(acc => {
+      const accTime = new Date(acc.timestamp);
+      if (accTime > fiveMinAgo) {
+        newNotifications.push({
+          id: acc._id,
+          type: 'emergency',
+          message: `Accident detected at ${acc.latitude.toFixed(4)}, ${acc.longitude.toFixed(4)}`,
+          time: 'Just now'
+        });
+      }
+    });
+    // Add notifications for vehicles with fire
+    vehicles.forEach(v => {
+      if (v.fire_detected) {
+        newNotifications.push({
+          id: v.blackbox_id + '_fire',
+          type: 'warning',
+          message: `Fire detected in vehicle ${v.blackbox_id}`,
+          time: 'Just now'
+        });
+      }
+    });
+    setNotifications(newNotifications.slice(0, 5)); // keep latest 5
+  }, [vehicles, accidents]);
 
   // Update map center to first valid vehicle
   useEffect(() => {
@@ -99,7 +134,9 @@ const Dashboard = () => {
 
   // Compute stats
   useEffect(() => {
-    const activeEmergencies = vehicles.filter(v => v.fire_detected || v.acceleration_g > 3).length;
+    const totalVehicles = vehicles.length;
+    const activeVehicles = vehicles.filter(v => v.speed_kmph > 0).length;
+    const emergencyVehicles = vehicles.filter(v => v.fire_detected || v.acceleration_g > 3).length;
     const today = new Date().toISOString().split('T')[0];
     const todayIncidents = accidents.filter(a => a.timestamp.startsWith(today)).length;
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -107,7 +144,9 @@ const Dashboard = () => {
 
     setStats(prev => ({
       ...prev,
-      activeEmergencies,
+      totalVehicles,
+      activeVehicles,
+      emergencyVehicles,
       todayIncidents,
       yesterdayIncidents
     }));
@@ -123,16 +162,18 @@ const Dashboard = () => {
       step++;
       const progress = step / steps;
       setAnimatedStats({
-        activeEmergencies: Math.round(stats.activeEmergencies * progress),
-        responseTime: (stats.responseTime * progress).toFixed(1),
+        totalVehicles: Math.round(stats.totalVehicles * progress),
+        activeVehicles: Math.round(stats.activeVehicles * progress),
+        emergencyVehicles: Math.round(stats.emergencyVehicles * progress),
         todayIncidents: Math.round(stats.todayIncidents * progress),
         systemHealth: Math.round(stats.systemHealth * progress)
       });
       if (step >= steps) {
         clearInterval(timer);
         setAnimatedStats({
-          activeEmergencies: stats.activeEmergencies,
-          responseTime: stats.responseTime,
+          totalVehicles: stats.totalVehicles,
+          activeVehicles: stats.activeVehicles,
+          emergencyVehicles: stats.emergencyVehicles,
           todayIncidents: stats.todayIncidents,
           systemHealth: stats.systemHealth
         });
@@ -215,18 +256,36 @@ const Dashboard = () => {
               <div className="relative">
                 <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 hover:bg-gray-100 rounded-full">
                   <FaBell className="text-xl text-gray-600" />
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                  {notifications.length > 0 && (
+                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                  )}
                 </button>
                 {showNotifications && (
                   <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
-                    <div className="p-3 border-b border-gray-200">
-                      <h3 className="font-semibold">Notifications</h3>
+                    <div className="p-3 border-b border-gray-200 flex justify-between items-center">
+                      <h3 className="font-semibold">Alerts</h3>
+                      <button className="text-xs text-blue-600">Clear</button>
                     </div>
                     <div className="max-h-96 overflow-y-auto">
-                      <div className="p-3 hover:bg-gray-50">
-                        <p className="text-sm">New accident detected near Sector 5</p>
-                        <span className="text-xs text-gray-400">2 min ago</span>
-                      </div>
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500 text-sm">No new alerts</div>
+                      ) : (
+                        notifications.map(notif => (
+                          <div key={notif.id} className="p-3 hover:bg-gray-50 border-b last:border-0">
+                            <div className="flex items-start space-x-2">
+                              {notif.type === 'emergency' ? (
+                                <MdEmergency className="text-red-500 mt-0.5 flex-shrink-0" />
+                              ) : (
+                                <MdWarning className="text-yellow-500 mt-0.5 flex-shrink-0" />
+                              )}
+                              <div>
+                                <p className="text-sm text-gray-800">{notif.message}</p>
+                                <span className="text-xs text-gray-400">{notif.time}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 )}
@@ -267,17 +326,17 @@ const Dashboard = () => {
       </header>
 
       <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
-        {/* Stats Cards */}
+        {/* Stats Cards - Replaced with real vehicle stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-100 hover:shadow-md transition">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-blue-600 text-sm flex items-center"><MdEmergency className="mr-1" /> ACTIVE EMERGENCIES</p>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{animatedStats.activeEmergencies}</p>
-                <p className="text-xs text-green-600 mt-2 flex items-center"><FaChartLine className="mr-1" /> Live from sensors</p>
+                <p className="text-blue-600 text-sm flex items-center"><FaCar className="mr-1" /> TOTAL VEHICLES</p>
+                <p className="text-3xl font-bold text-gray-800 mt-2">{animatedStats.totalVehicles}</p>
+                <p className="text-xs text-green-600 mt-2 flex items-center"><FaChartLine className="mr-1" /> Registered</p>
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <MdEmergency className="text-xl text-blue-600" />
+                <FaCar className="text-xl text-blue-600" />
               </div>
             </div>
           </div>
@@ -285,25 +344,25 @@ const Dashboard = () => {
           <div className="bg-white rounded-xl p-6 shadow-sm border border-green-100 hover:shadow-md transition">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-green-600 text-sm flex items-center"><FaClock className="mr-1" /> RESPONSE TIME</p>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{animatedStats.responseTime}s</p>
-                <p className="text-xs text-green-600 mt-2">Average</p>
+                <p className="text-green-600 text-sm flex items-center"><FaTachometerAlt className="mr-1" /> ACTIVE VEHICLES</p>
+                <p className="text-3xl font-bold text-gray-800 mt-2">{animatedStats.activeVehicles}</p>
+                <p className="text-xs text-green-600 mt-2">Speed > 0 km/h</p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <FaClock className="text-xl text-green-600" />
+                <FaTachometerAlt className="text-xl text-green-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-yellow-100 hover:shadow-md transition">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-red-100 hover:shadow-md transition">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-yellow-600 text-sm flex items-center"><IoMdWarning className="mr-1" /> TODAY'S INCIDENTS</p>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{animatedStats.todayIncidents}</p>
-                <p className="text-xs text-yellow-600 mt-2">+{stats.todayIncidents - stats.yesterdayIncidents} vs yesterday</p>
+                <p className="text-red-600 text-sm flex items-center"><MdWarning className="mr-1" /> EMERGENCY VEHICLES</p>
+                <p className="text-3xl font-bold text-gray-800 mt-2">{animatedStats.emergencyVehicles}</p>
+                <p className="text-xs text-red-600 mt-2">Fire/High impact</p>
               </div>
-              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                <IoMdWarning className="text-xl text-yellow-600" />
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <MdWarning className="text-xl text-red-600" />
               </div>
             </div>
           </div>
@@ -311,12 +370,12 @@ const Dashboard = () => {
           <div className="bg-white rounded-xl p-6 shadow-sm border border-purple-100 hover:shadow-md transition">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-purple-600 text-sm flex items-center"><MdHealthAndSafety className="mr-1" /> SYSTEM HEALTH</p>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{animatedStats.systemHealth}%</p>
-                <p className="text-xs text-purple-600 mt-2">Optimal</p>
+                <p className="text-purple-600 text-sm flex items-center"><IoMdWarning className="mr-1" /> TODAY'S INCIDENTS</p>
+                <p className="text-3xl font-bold text-gray-800 mt-2">{animatedStats.todayIncidents}</p>
+                <p className="text-xs text-purple-600 mt-2">+{stats.todayIncidents - stats.yesterdayIncidents} vs yesterday</p>
               </div>
               <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                <MdHealthAndSafety className="text-xl text-purple-600" />
+                <IoMdWarning className="text-xl text-purple-600" />
               </div>
             </div>
           </div>
@@ -324,7 +383,7 @@ const Dashboard = () => {
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Map Section - takes 2 columns */}
+          {/* Map Section */}
           <div className="lg:col-span-2 bg-white rounded-xl p-4 shadow-md border border-gray-200">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-800 flex items-center">
@@ -370,6 +429,12 @@ const Dashboard = () => {
                 </div>
               </div>
             )}
+            <div className="mt-2 text-xs text-gray-400 flex justify-between">
+              <span>Last updated: {lastUpdated?.toLocaleTimeString() || 'N/A'}</span>
+              <button onClick={() => window.location.reload()} className="text-blue-600 hover:underline">
+                <MdRefresh className="inline mr-1" /> Refresh
+              </button>
+            </div>
           </div>
 
           {/* Incidents Panel */}
@@ -423,28 +488,45 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Fleet Status (placeholder) */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <h3 className="font-semibold text-gray-700 flex items-center mb-3">
-              <FaAmbulance className="text-red-500 mr-2" /> Ambulances
-            </h3>
-            <p className="text-2xl font-bold text-gray-800">{vehicles.filter(v => v.vehicle_type === 'ambulance').length}</p>
-            <p className="text-xs text-gray-400">Registered units</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <h3 className="font-semibold text-gray-700 flex items-center mb-3">
-              <GiPoliceBadge className="text-blue-500 mr-2" /> Police
-            </h3>
-            <p className="text-2xl font-bold text-gray-800">{vehicles.filter(v => v.vehicle_type === 'police').length}</p>
-            <p className="text-xs text-gray-400">Registered units</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <h3 className="font-semibold text-gray-700 flex items-center mb-3">
-              <GiFireExtinguisher className="text-orange-500 mr-2" /> Fire
-            </h3>
-            <p className="text-2xl font-bold text-gray-800">{vehicles.filter(v => v.vehicle_type === 'fire').length}</p>
-            <p className="text-xs text-gray-400">Registered units</p>
+        {/* Live Vehicle Data Table */}
+        <div className="mt-6 bg-white rounded-xl p-4 shadow-md border border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
+            <FaList className="text-blue-600 mr-2" />
+            LIVE VEHICLE DATA
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Blackbox ID</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Speed (km/h)</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Accel (g)</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tilt (°)</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fire</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Human</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {vehicles.length === 0 ? (
+                  <tr><td colSpan="8" className="px-4 py-4 text-center text-gray-400">No vehicle data</td></tr>
+                ) : (
+                  vehicles.map(v => (
+                    <tr key={v.blackbox_id} className={`hover:bg-gray-50 ${v.fire_detected ? 'bg-red-50' : ''}`}>
+                      <td className="px-4 py-2 text-sm font-mono">{v.blackbox_id}</td>
+                      <td className="px-4 py-2 text-sm">{v.latitude.toFixed(4)}, {v.longitude.toFixed(4)}</td>
+                      <td className="px-4 py-2 text-sm">{v.speed_kmph.toFixed(1)}</td>
+                      <td className="px-4 py-2 text-sm">{v.acceleration_g.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-sm">{v.tilt_degree.toFixed(1)}</td>
+                      <td className="px-4 py-2 text-sm">{v.fire_detected ? '🔥 Yes' : 'No'}</td>
+                      <td className="px-4 py-2 text-sm">{v.human_presence ? 'Yes' : 'No'}</td>
+                      <td className="px-4 py-2 text-sm text-gray-500">{new Date(v.timestamp).toLocaleTimeString()}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
