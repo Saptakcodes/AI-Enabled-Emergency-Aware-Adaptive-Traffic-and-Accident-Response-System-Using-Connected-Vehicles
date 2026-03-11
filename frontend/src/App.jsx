@@ -7,7 +7,7 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Offline from "./pages/Offline";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
-
+import AccidentReports from './pages/AccidentReports';
 function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -35,6 +35,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/accident-reports" element={<AccidentReports />} />
       </Routes>
       <PWAInstallPrompt />
     </div>
