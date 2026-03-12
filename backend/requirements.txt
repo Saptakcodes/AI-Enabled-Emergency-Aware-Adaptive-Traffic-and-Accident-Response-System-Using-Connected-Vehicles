@@ -49,3 +49,5 @@ packaging==26.0
 annotated-doc==0.0.4
 cffi==2.0.0
 pycparser==3.0
+
+aiohttp
