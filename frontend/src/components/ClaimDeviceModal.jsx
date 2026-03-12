@@ -1,5 +1,6 @@
 // src/components/ClaimDeviceModal.jsx
 import { useState } from 'react';
+import ReactDOM from 'react-dom';
 import API from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -25,9 +26,9 @@ const ClaimDeviceModal = ({ isOpen, onClose, onSuccess }) => {
 
   if (!isOpen) return null;
 
-  return (
+  return ReactDOM.createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -89,7 +90,8 @@ const ClaimDeviceModal = ({ isOpen, onClose, onSuccess }) => {
           </form>
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 
