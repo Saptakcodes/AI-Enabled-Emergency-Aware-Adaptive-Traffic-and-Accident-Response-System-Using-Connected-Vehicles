@@ -1,5 +1,5 @@
 // src/components/LiveMap.jsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -111,16 +111,28 @@ const AccidentMarker = React.memo(({ accident, onClick }) => (
   </Marker>
 ));
 
-// Google Maps iframe view (simple, no markers)
-const GoogleMapsView = ({ center, zoom }) => {
+// Google Maps iframe view (simple, no markers) with refresh prevention
+const GoogleMapsView = React.memo(({ center, zoom }) => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const prevCenterRef = useRef(center);
+  const [src, setSrc] = useState('');
+
+  useEffect(() => {
+    // Only update if center changed significantly
+    if (!isSameCoords(prevCenterRef.current, center)) {
+      const newSrc = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${center[0]},${center[1]}&zoom=${zoom}&maptype=satellite`;
+      setSrc(newSrc);
+      prevCenterRef.current = center;
+    }
+  }, [center, zoom, apiKey]);
+
   if (!apiKey) {
     return <div className="h-full w-full flex items-center justify-center bg-gray-100 text-gray-500">Google Maps API key missing</div>;
   }
-  const mapSrc = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${center[0]},${center[1]}&zoom=${zoom}&maptype=satellite`;
+
   return (
     <iframe
-      src={mapSrc}
+      src={src}
       className="w-full h-full rounded-lg border-0"
       allowFullScreen
       loading="lazy"
@@ -128,7 +140,7 @@ const GoogleMapsView = ({ center, zoom }) => {
       title="Google Maps"
     />
   );
-};
+});
 
 const LiveMap = ({ vehicles = [], accidents = [], center = [22.5726, 88.3639], zoom = 14, onMarkerClick, mapType = 'interactive' }) => {
   if (mapType === 'simple') {

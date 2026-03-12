@@ -6,6 +6,8 @@ from database import live_sensor_collection, accident_collection
 from models import SensorData, AccidentRecord
 from datetime import datetime
 
+from geocoding import router as geocoding_router
+
 app = FastAPI()
 
 # Update CORS configuration
@@ -25,6 +27,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 
+app.include_router(geocoding_router) 
 
 @app.get("/")
 def home():

@@ -51,6 +51,11 @@ const Dashboard = () => {
     systemHealth: 0
   });
 
+  // New state for location info
+  const [locationInfo, setLocationInfo] = useState(null);
+  const [nearbyPlaces, setNearbyPlaces] = useState({ hospitals: [], police: [] });
+  const [geocodingLoading, setGeocodingLoading] = useState(false);
+
   // Load user from localStorage
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -187,6 +192,40 @@ const Dashboard = () => {
     const timer = setInterval(() => setLiveTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Fetch reverse geocode and nearby places when selectedMarker changes
+  useEffect(() => {
+    if (!selectedMarker) {
+      setLocationInfo(null);
+      setNearbyPlaces({ hospitals: [], police: [] });
+      return;
+    }
+
+    const fetchLocationInfo = async () => {
+      setGeocodingLoading(true);
+      try {
+        // Reverse geocode
+        const geoRes = await API.get(`/geocode/reverse?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}`);
+        setLocationInfo(geoRes.data);
+
+        // Fetch nearby hospitals and police stations (optional)
+        const [hospitalsRes, policeRes] = await Promise.all([
+          API.get(`/geocode/nearby?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}&type=hospital&radius=2000`),
+          API.get(`/geocode/nearby?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}&type=police&radius=2000`)
+        ]);
+        setNearbyPlaces({
+          hospitals: hospitalsRes.data.slice(0, 3),
+          police: policeRes.data.slice(0, 3)
+        });
+      } catch (error) {
+        console.error('Failed to fetch location info', error);
+      } finally {
+        setGeocodingLoading(false);
+      }
+    };
+
+    fetchLocationInfo();
+  }, [selectedMarker]);
 
   const recentIncidents = accidents.slice(0, 4).map(a => ({
     id: a._id,
@@ -326,7 +365,7 @@ const Dashboard = () => {
       </header>
 
       <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
-        {/* Stats Cards - Replaced with real vehicle stats */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-100 hover:shadow-md transition">
             <div className="flex justify-between items-start">
@@ -414,16 +453,58 @@ const Dashboard = () => {
                 mapType={mapViewMode}
               />
             </div>
+            {/* Rich Marker Details Panel */}
             {selectedMarker && (
               <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex justify-between items-start">
-                  <div>
+                  <div className="w-full">
                     <p className="font-semibold text-gray-800">
                       {selectedMarker.type === 'vehicle' ? '🚗 Vehicle' : '🚨 Accident'} Details
                     </p>
                     <p className="text-sm text-gray-600 mt-1">
                       Speed: {selectedMarker.speed_kmph} km/h | Tilt: {selectedMarker.tilt_degree}° | Fire: {selectedMarker.fire_detected ? 'Yes' : 'No'}
                     </p>
+                    {geocodingLoading ? (
+                      <p className="text-xs text-gray-400 mt-1">Loading location info...</p>
+                    ) : locationInfo ? (
+                      <div className="mt-2 text-sm">
+                        <p className="font-medium text-gray-700">📍 {locationInfo.display_name}</p>
+                        <div className="grid grid-cols-2 gap-2 mt-1 text-xs">
+                          {locationInfo.road && <div><span className="text-gray-500">Road:</span> {locationInfo.road}</div>}
+                          {locationInfo.city && <div><span className="text-gray-500">City:</span> {locationInfo.city}</div>}
+                          {locationInfo.suburb && <div><span className="text-gray-500">Suburb:</span> {locationInfo.suburb}</div>}
+                          {locationInfo.neighbourhood && <div><span className="text-gray-500">Neighbourhood:</span> {locationInfo.neighbourhood}</div>}
+                        </div>
+                        {/* Nearby places */}
+                        {(nearbyPlaces.hospitals.length > 0 || nearbyPlaces.police.length > 0) && (
+                          <div className="mt-2 pt-2 border-t border-blue-200">
+                            <p className="text-xs font-semibold text-gray-700">Nearby:</p>
+                            {nearbyPlaces.hospitals.length > 0 && (
+                              <div className="mt-1">
+                                <p className="text-xs text-red-600">🏥 Hospitals</p>
+                                <ul className="list-disc list-inside text-xs text-gray-600">
+                                  {nearbyPlaces.hospitals.map((h, i) => (
+                                    <li key={i}>{h.name} ({(h.distance/1000).toFixed(1)} km)</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {nearbyPlaces.police.length > 0 && (
+                              <div className="mt-1">
+                                <p className="text-xs text-blue-600">🚔 Police</p>
+                                <ul className="list-disc list-inside text-xs text-gray-600">
+                                  {nearbyPlaces.police.map((p, i) => (
+                                    <li key={i}>{p.name} ({(p.distance/1000).toFixed(1)} km)</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 mt-1">No address info available</p>
+                    )}
                   </div>
                   <button onClick={() => setSelectedMarker(null)} className="text-gray-400 hover:text-gray-600">✕</button>
                 </div>
