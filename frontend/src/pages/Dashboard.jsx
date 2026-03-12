@@ -51,11 +51,10 @@ const Dashboard = () => {
     systemHealth: 0
   });
 
-  // New state for location info
+  // New state for location info (updated to include fire)
   const [locationInfo, setLocationInfo] = useState(null);
-  const [nearbyPlaces, setNearbyPlaces] = useState({ hospitals: [], police: [] });
+  const [nearbyPlaces, setNearbyPlaces] = useState({ hospitals: [], police: [], fire: [] });
   const [geocodingLoading, setGeocodingLoading] = useState(false);
-  // ADD: error state for geocoding
   const [geocodingError, setGeocodingError] = useState(null);
 
   // Load user from localStorage
@@ -199,38 +198,41 @@ const Dashboard = () => {
   useEffect(() => {
     if (!selectedMarker) {
       setLocationInfo(null);
-      setNearbyPlaces({ hospitals: [], police: [] });
-      setGeocodingError(null); // ADD: clear error
+      setNearbyPlaces({ hospitals: [], police: [], fire: [] });
+      setGeocodingError(null);
       return;
     }
 
-    console.log("🎯 selectedMarker changed:", selectedMarker); // ADD: debug log
+    console.log("🎯 selectedMarker changed:", selectedMarker);
 
     const fetchLocationInfo = async () => {
       setGeocodingLoading(true);
-      setGeocodingError(null); // ADD: clear previous error
+      setGeocodingError(null);
       try {
         // Reverse geocode
-        console.log("📡 Calling reverse geocode..."); // ADD: debug
+        console.log("📡 Calling reverse geocode...");
         const geoRes = await API.get(`/geocode/reverse?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}`);
-        console.log("✅ Reverse geocode response:", geoRes.data); // ADD: debug
+        console.log("✅ Reverse geocode response:", geoRes.data);
         setLocationInfo(geoRes.data);
 
-        // Fetch nearby hospitals and police stations (optional)
-        console.log("📡 Calling nearby hospitals..."); // ADD: debug
-        const [hospitalsRes, policeRes] = await Promise.all([
+        // Fetch nearby hospitals, police stations, and fire stations
+        console.log("📡 Calling nearby hospitals, police, and fire stations...");
+        const [hospitalsRes, policeRes, fireRes] = await Promise.all([
           API.get(`/geocode/nearby?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}&type=hospital&radius=2000`),
-          API.get(`/geocode/nearby?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}&type=police&radius=2000`)
+          API.get(`/geocode/nearby?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}&type=police&radius=2000`),
+          API.get(`/geocode/nearby?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}&type=fire_station&radius=2000`)
         ]);
-        console.log("✅ Nearby hospitals:", hospitalsRes.data); // ADD: debug
-        console.log("✅ Nearby police:", policeRes.data); // ADD: debug
+        console.log("✅ Nearby hospitals:", hospitalsRes.data);
+        console.log("✅ Nearby police:", policeRes.data);
+        console.log("✅ Nearby fire stations:", fireRes.data);
         setNearbyPlaces({
           hospitals: hospitalsRes.data.slice(0, 3),
-          police: policeRes.data.slice(0, 3)
+          police: policeRes.data.slice(0, 3),
+          fire: fireRes.data.slice(0, 3)
         });
       } catch (error) {
-        console.error('❌ Failed to fetch location info:', error); // ADD: error log
-        setGeocodingError(error.message || 'Failed to load location data'); // ADD: set error
+        console.error('❌ Failed to fetch location info:', error);
+        setGeocodingError(error.message || 'Failed to load location data');
       } finally {
         setGeocodingLoading(false);
       }
@@ -252,7 +254,7 @@ const Dashboard = () => {
   }));
 
   const handleMarkerClick = (item, type) => {
-    console.log("🖱️ Marker clicked:", item, type); // ADD: debug
+    console.log("🖱️ Marker clicked:", item, type);
     setSelectedMarker({ ...item, type });
     setMapCenter([item.latitude, item.longitude]);
   };
@@ -285,7 +287,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
-      {/* Header - unchanged */}
+      {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
@@ -380,7 +382,6 @@ const Dashboard = () => {
       <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {/* ... all stats cards exactly as before ... */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-100 hover:shadow-md transition">
             <div className="flex justify-between items-start">
               <div>
@@ -467,7 +468,7 @@ const Dashboard = () => {
                 mapType={mapViewMode}
               />
             </div>
-            {/* Rich Marker Details Panel - with added error display */}
+            {/* Rich Marker Details Panel with fire stations */}
             {selectedMarker && (
               <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex justify-between items-start">
@@ -480,7 +481,7 @@ const Dashboard = () => {
                     </p>
                     {geocodingLoading ? (
                       <p className="text-xs text-gray-400 mt-1">Loading location info...</p>
-                    ) : geocodingError ? (  // ADD: error display
+                    ) : geocodingError ? (
                       <p className="text-xs text-red-500 mt-1">Error: {geocodingError}</p>
                     ) : locationInfo ? (
                       <div className="mt-2 text-sm">
@@ -492,7 +493,7 @@ const Dashboard = () => {
                           {locationInfo.neighbourhood && <div><span className="text-gray-500">Neighbourhood:</span> {locationInfo.neighbourhood}</div>}
                         </div>
                         {/* Nearby places */}
-                        {(nearbyPlaces.hospitals.length > 0 || nearbyPlaces.police.length > 0) && (
+                        {(nearbyPlaces.hospitals.length > 0 || nearbyPlaces.police.length > 0 || nearbyPlaces.fire.length > 0) && (
                           <div className="mt-2 pt-2 border-t border-blue-200">
                             <p className="text-xs font-semibold text-gray-700">Nearby:</p>
                             {nearbyPlaces.hospitals.length > 0 && (
@@ -511,6 +512,16 @@ const Dashboard = () => {
                                 <ul className="list-disc list-inside text-xs text-gray-600">
                                   {nearbyPlaces.police.map((p, i) => (
                                     <li key={i}>{p.name} ({(p.distance/1000).toFixed(1)} km)</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {nearbyPlaces.fire.length > 0 && (
+                              <div className="mt-1">
+                                <p className="text-xs text-orange-600">🔥 Fire Stations</p>
+                                <ul className="list-disc list-inside text-xs text-gray-600">
+                                  {nearbyPlaces.fire.map((f, i) => (
+                                    <li key={i}>{f.name} ({(f.distance/1000).toFixed(1)} km)</li>
                                   ))}
                                 </ul>
                               </div>
