@@ -55,6 +55,8 @@ const Dashboard = () => {
   const [locationInfo, setLocationInfo] = useState(null);
   const [nearbyPlaces, setNearbyPlaces] = useState({ hospitals: [], police: [] });
   const [geocodingLoading, setGeocodingLoading] = useState(false);
+  // ADD: error state for geocoding
+  const [geocodingError, setGeocodingError] = useState(null);
 
   // Load user from localStorage
   useEffect(() => {
@@ -198,27 +200,37 @@ const Dashboard = () => {
     if (!selectedMarker) {
       setLocationInfo(null);
       setNearbyPlaces({ hospitals: [], police: [] });
+      setGeocodingError(null); // ADD: clear error
       return;
     }
 
+    console.log("🎯 selectedMarker changed:", selectedMarker); // ADD: debug log
+
     const fetchLocationInfo = async () => {
       setGeocodingLoading(true);
+      setGeocodingError(null); // ADD: clear previous error
       try {
         // Reverse geocode
+        console.log("📡 Calling reverse geocode..."); // ADD: debug
         const geoRes = await API.get(`/geocode/reverse?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}`);
+        console.log("✅ Reverse geocode response:", geoRes.data); // ADD: debug
         setLocationInfo(geoRes.data);
 
         // Fetch nearby hospitals and police stations (optional)
+        console.log("📡 Calling nearby hospitals..."); // ADD: debug
         const [hospitalsRes, policeRes] = await Promise.all([
           API.get(`/geocode/nearby?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}&type=hospital&radius=2000`),
           API.get(`/geocode/nearby?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}&type=police&radius=2000`)
         ]);
+        console.log("✅ Nearby hospitals:", hospitalsRes.data); // ADD: debug
+        console.log("✅ Nearby police:", policeRes.data); // ADD: debug
         setNearbyPlaces({
           hospitals: hospitalsRes.data.slice(0, 3),
           police: policeRes.data.slice(0, 3)
         });
       } catch (error) {
-        console.error('Failed to fetch location info', error);
+        console.error('❌ Failed to fetch location info:', error); // ADD: error log
+        setGeocodingError(error.message || 'Failed to load location data'); // ADD: set error
       } finally {
         setGeocodingLoading(false);
       }
@@ -240,6 +252,7 @@ const Dashboard = () => {
   }));
 
   const handleMarkerClick = (item, type) => {
+    console.log("🖱️ Marker clicked:", item, type); // ADD: debug
     setSelectedMarker({ ...item, type });
     setMapCenter([item.latitude, item.longitude]);
   };
@@ -272,7 +285,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
-      {/* Header */}
+      {/* Header - unchanged */}
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
@@ -367,6 +380,7 @@ const Dashboard = () => {
       <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* ... all stats cards exactly as before ... */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-100 hover:shadow-md transition">
             <div className="flex justify-between items-start">
               <div>
@@ -453,7 +467,7 @@ const Dashboard = () => {
                 mapType={mapViewMode}
               />
             </div>
-            {/* Rich Marker Details Panel */}
+            {/* Rich Marker Details Panel - with added error display */}
             {selectedMarker && (
               <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex justify-between items-start">
@@ -466,6 +480,8 @@ const Dashboard = () => {
                     </p>
                     {geocodingLoading ? (
                       <p className="text-xs text-gray-400 mt-1">Loading location info...</p>
+                    ) : geocodingError ? (  // ADD: error display
+                      <p className="text-xs text-red-500 mt-1">Error: {geocodingError}</p>
                     ) : locationInfo ? (
                       <div className="mt-2 text-sm">
                         <p className="font-medium text-gray-700">📍 {locationInfo.display_name}</p>
