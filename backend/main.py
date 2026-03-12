@@ -6,12 +6,12 @@ from database import (
     live_sensor_collection,
     accident_collection,
     devices_collection,
-    post_accident_collection,          # ← ADDED
+    post_accident_collection,          
 )
 from models import (
     SensorData,
     AccidentRecord,
-    PostAccidentReport,                # ← ADDED
+    PostAccidentReport,                
 )
 from datetime import datetime
 
@@ -149,3 +149,19 @@ async def get_accidents():
         d["_id"] = str(d["_id"])
 
     return data
+
+
+# =========================
+# GET LATEST POST-ACCIDENT
+# =========================
+@app.get("/post-accident/latest/{blackbox_id}")
+async def get_latest_post_accident(blackbox_id: str):
+    """Return the most recent post‑accident record for a vehicle."""
+    record = await post_accident_collection.find_one(
+        {"blackbox_id": blackbox_id},
+        sort=[("timestamp", -1)]
+    )
+    if record:
+        record["_id"] = str(record["_id"])
+        return record
+    return None

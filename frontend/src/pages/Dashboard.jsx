@@ -32,6 +32,10 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [notifications, setNotifications] = useState([]);
 
+  // Post‑accident state
+  const [postAccidentLatest, setPostAccidentLatest] = useState(null);
+  const [postAccidentLoading, setPostAccidentLoading] = useState(false);
+
   // Stats
   const [stats, setStats] = useState({
     totalVehicles: 0,
@@ -253,10 +257,32 @@ const Dashboard = () => {
     fetchLocationInfo();
   }, [selectedMarker]);
 
+  // Fetch latest post‑accident data when an accident marker is selected
+  useEffect(() => {
+    if (selectedMarker?.type === 'accident' && selectedMarker.blackbox_id) {
+      const fetchPostAccident = async () => {
+        setPostAccidentLoading(true);
+        try {
+          const res = await API.get(`/post-accident/latest/${selectedMarker.blackbox_id}`);
+          setPostAccidentLatest(res.data);
+        } catch (error) {
+          console.error('Failed to fetch post-accident data', error);
+          setPostAccidentLatest(null);
+        } finally {
+          setPostAccidentLoading(false);
+        }
+      };
+      fetchPostAccident();
+    } else {
+      setPostAccidentLatest(null);
+    }
+  }, [selectedMarker]);
+
   const recentIncidents = accidents.slice(0, 4).map(a => ({
     id: a._id,
     lat: a.latitude,
     lng: a.longitude,
+    blackbox_id: a.blackbox_id,
     severity: a.fire_detected ? 'critical' : a.acceleration_g > 3 ? 'medium' : 'low',
     title: `Accident @ ${a.latitude.toFixed(4)}, ${a.longitude.toFixed(4)}`,
     time: new Date(a.timestamp).toLocaleTimeString(),
@@ -504,7 +530,7 @@ const Dashboard = () => {
                 mapType={mapViewMode}
               />
             </div>
-            {/* Rich Marker Details Panel with fire stations */}
+            {/* Rich Marker Details Panel with fire stations and post-accident */}
             {selectedMarker && (
               <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex justify-between items-start">
@@ -515,6 +541,45 @@ const Dashboard = () => {
                     <p className="text-sm text-gray-600 mt-1">
                       Speed: {selectedMarker.speed_kmph} km/h | Tilt: {selectedMarker.tilt_degree}° | Fire: {selectedMarker.fire_detected ? 'Yes' : 'No'}
                     </p>
+
+                    {/* Post‑accident status (only for accident markers) */}
+                    {selectedMarker.type === 'accident' && (
+                      <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-xs font-semibold text-red-700 flex items-center">
+                          <MdEmergency className="mr-1" /> Post‑Accident Monitoring
+                        </p>
+                        {postAccidentLoading ? (
+                          <p className="text-xs text-gray-500">Loading latest status...</p>
+                        ) : postAccidentLatest ? (
+                          <div className="mt-1 text-xs">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-gray-600">Human:</span>
+                              <span className={postAccidentLatest.human_presence ? 'text-green-600' : 'text-red-600'}>
+                                {postAccidentLatest.human_presence ? '✅ Present' : '❌ Absent'}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-gray-600">Breathing:</span>
+                              <span className={postAccidentLatest.breathing_detected ? 'text-green-600' : 'text-red-600'}>
+                                {postAccidentLatest.breathing_detected ? '✅ Yes' : '❌ No'}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-gray-600">Fire:</span>
+                              <span className={postAccidentLatest.fire_detected ? 'text-red-600' : 'text-green-600'}>
+                                {postAccidentLatest.fire_detected ? '🔥 Detected' : '✅ None'}
+                              </span>
+                            </div>
+                            <p className="text-gray-400 mt-1">
+                              Last update: {new Date(postAccidentLatest.timestamp).toLocaleTimeString()}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-400">No post‑accident data yet</p>
+                        )}
+                      </div>
+                    )}
+
                     {geocodingLoading ? (
                       <p className="text-xs text-gray-400 mt-1">Loading location info...</p>
                     ) : geocodingError ? (
