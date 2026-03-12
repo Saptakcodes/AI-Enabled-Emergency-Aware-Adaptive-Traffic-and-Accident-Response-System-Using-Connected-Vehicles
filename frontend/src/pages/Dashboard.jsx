@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
 import LiveMap from '../components/LiveMap';
-import ClaimDeviceModal from '../components/ClaimDeviceModal'; // ← ADDED
 import { 
   FaAmbulance, FaBell, FaUserCircle, FaMapMarkerAlt, FaTrafficLight,
   FaExclamationTriangle, FaCheckCircle, FaClock, FaChartLine, FaCog,
@@ -17,7 +16,7 @@ import { GiPoliceBadge, GiFireExtinguisher } from 'react-icons/gi';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState({ name: 'User', role: 'normal', avatar: '' });
+  const [user, setUser] = useState({ name: 'User', role: 'normal', avatar: '', email: '', vehicleNumber: '' });
   const [liveTime, setLiveTime] = useState(new Date());
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -58,9 +57,6 @@ const Dashboard = () => {
   const [geocodingLoading, setGeocodingLoading] = useState(false);
   const [geocodingError, setGeocodingError] = useState(null);
 
-  // State for claim device modal
-  const [showClaimModal, setShowClaimModal] = useState(false); // ← ADDED
-
   // Load user from localStorage
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -70,7 +66,8 @@ const Dashboard = () => {
     }
     const userData = localStorage.getItem("user");
     if (userData) {
-      setUser(JSON.parse(userData));
+      const parsed = JSON.parse(userData);
+      setUser(parsed);
     }
   }, [navigate]);
 
@@ -360,7 +357,7 @@ const Dashboard = () => {
                 )}
               </div>
 
-              {/* User Menu */}
+              {/* User Menu - Enhanced */}
               <div className="relative">
                 <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center space-x-2 hover:bg-gray-100 rounded-lg p-2">
                   {user.avatar ? (
@@ -375,28 +372,41 @@ const Dashboard = () => {
                   <FaChevronDown className="text-xs text-gray-400" />
                 </button>
                 {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200">
-                    <button className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm">
-                      <FaUser className="text-xs" /><span>Profile</span>
-                    </button>
-                    <button className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm">
-                      <FaCog className="text-xs" /><span>Settings</span>
-                    </button>
-                    {/* Claim Device menu item - ADDED */}
-                    <button
-                      onClick={() => {
-                        setShowUserMenu(false);
-                        setShowClaimModal(true);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm"
-                    >
-                      <FaShieldAlt className="text-xs text-blue-600" />
-                      <span>Claim Device</span>
-                    </button>
-                    <hr className="border-gray-200" />
-                    <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm text-red-600">
-                      <FaSignOutAlt className="text-xs" /><span>Logout</span>
-                    </button>
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                    {/* User details section */}
+                    <div className="px-4 py-3 border-b border-gray-200">
+                      <p className="text-sm font-semibold text-gray-800">{user.name}</p>
+                      <p className="text-xs text-gray-500">{user.email}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Vehicle: {user.vehicleNumber || 'Not set'} ({user.role})
+                      </p>
+                    </div>
+                    <div className="py-1">
+                      <button className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm">
+                        <FaUser className="text-xs text-gray-600" />
+                        <span>Profile</span>
+                      </button>
+                      <button className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm">
+                        <FaCog className="text-xs text-gray-600" />
+                        <span>Settings</span>
+                      </button>
+                      {/* Claim Device - navigates to separate page */}
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          navigate('/claim-device');
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm"
+                      >
+                        <FaShieldAlt className="text-xs text-blue-600" />
+                        <span>Claim Device</span>
+                      </button>
+                      <hr className="border-gray-200" />
+                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm text-red-600">
+                        <FaSignOutAlt className="text-xs" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -670,15 +680,6 @@ const Dashboard = () => {
             <BsLightningChargeFill className="text-2xl" />
           </button>
         </div>
-
-        {/* Claim Device Modal - ADDED */}
-        <ClaimDeviceModal
-          isOpen={showClaimModal}
-          onClose={() => setShowClaimModal(false)}
-          onSuccess={() => {
-            alert('Device claimed successfully!');
-          }}
-        />
       </main>
     </div>
   );
