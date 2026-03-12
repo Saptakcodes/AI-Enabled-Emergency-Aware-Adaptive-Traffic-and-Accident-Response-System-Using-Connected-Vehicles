@@ -2,11 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from auth import router as auth_router
 
-from database import live_sensor_collection, accident_collection
+from database import live_sensor_collection, accident_collection, devices_collection  # added devices_collection
 from models import SensorData, AccidentRecord
 from datetime import datetime
 
 from geocoding import router as geocoding_router
+from devices import router as devices_router  # added devices router
 
 app = FastAPI()
 
@@ -26,8 +27,8 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
-
-app.include_router(geocoding_router) 
+app.include_router(geocoding_router)
+app.include_router(devices_router)  # added
 
 @app.get("/")
 def home():
@@ -46,6 +47,21 @@ async def receive_sensor_data(data: SensorData):
     # PRINT DATA IN TERMINAL
     print("\n📡 SENSOR DATA RECEIVED")
     print(sensor_dict)
+
+    # Auto‑create unclaimed device if it doesn't exist
+    existing_device = await devices_collection.find_one({"blackbox_id": data.blackbox_id})
+    if not existing_device:
+        unclaimed = {
+            "blackbox_id": data.blackbox_id,
+            "user_id": None,
+            "vehicle_number": "",
+            "vehicle_type": "normal",
+            "is_active": False,
+            "registered_at": datetime.utcnow(),
+            "claimed_at": None
+        }
+        await devices_collection.insert_one(unclaimed)
+        print(f"📌 Unclaimed device created for {data.blackbox_id}")
 
     await live_sensor_collection.update_one(
         {"blackbox_id": data.blackbox_id},

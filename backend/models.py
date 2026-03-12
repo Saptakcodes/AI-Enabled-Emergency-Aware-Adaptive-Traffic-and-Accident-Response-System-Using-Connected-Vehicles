@@ -43,3 +43,13 @@ class AccidentRecord(BaseModel):
     ambulance_notified: bool = False
     police_notified: bool = False
     timestamp: Optional[datetime] = None
+
+
+class Device(BaseModel):
+    blackbox_id: str
+    user_id: Optional[str] = None  
+    vehicle_number: Optional[str] = None
+    vehicle_type: Optional[str] = None
+    is_active: bool = False
+    registered_at: Optional[datetime] = None
+    claimed_at: Optional[datetime] = None

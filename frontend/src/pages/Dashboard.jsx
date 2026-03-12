@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
 import LiveMap from '../components/LiveMap';
+import ClaimDeviceModal from '../components/ClaimDeviceModal'; // ← ADDED
 import { 
   FaAmbulance, FaBell, FaUserCircle, FaMapMarkerAlt, FaTrafficLight,
   FaExclamationTriangle, FaCheckCircle, FaClock, FaChartLine, FaCog,
@@ -56,6 +57,9 @@ const Dashboard = () => {
   const [nearbyPlaces, setNearbyPlaces] = useState({ hospitals: [], police: [], fire: [] });
   const [geocodingLoading, setGeocodingLoading] = useState(false);
   const [geocodingError, setGeocodingError] = useState(null);
+
+  // State for claim device modal
+  const [showClaimModal, setShowClaimModal] = useState(false); // ← ADDED
 
   // Load user from localStorage
   useEffect(() => {
@@ -378,6 +382,17 @@ const Dashboard = () => {
                     <button className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm">
                       <FaCog className="text-xs" /><span>Settings</span>
                     </button>
+                    {/* Claim Device menu item - ADDED */}
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setShowClaimModal(true);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm"
+                    >
+                      <FaShieldAlt className="text-xs text-blue-600" />
+                      <span>Claim Device</span>
+                    </button>
                     <hr className="border-gray-200" />
                     <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm text-red-600">
                       <FaSignOutAlt className="text-xs" /><span>Logout</span>
@@ -655,6 +670,15 @@ const Dashboard = () => {
             <BsLightningChargeFill className="text-2xl" />
           </button>
         </div>
+
+        {/* Claim Device Modal - ADDED */}
+        <ClaimDeviceModal
+          isOpen={showClaimModal}
+          onClose={() => setShowClaimModal(false)}
+          onSuccess={() => {
+            alert('Device claimed successfully!');
+          }}
+        />
       </main>
     </div>
   );
