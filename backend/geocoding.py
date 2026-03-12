@@ -8,7 +8,7 @@ router = APIRouter(prefix="/geocode", tags=["geocoding"])
 
 # Nominatim configuration
 NOMINATIM_URL = "https://nominatim.openstreetmap.org"
-USER_AGENT = "AlertSystem/1.0 (contact: your-email@example.com)"  # Change to your email
+USER_AGENT = "AlertSystem/1.0 (contact: saptakchaki.official@gmail.com)"  # Change to your email
 
 # Rate limiting: 1 request per second
 _last_request_time = 0
