@@ -51,7 +51,7 @@ const Dashboard = () => {
     systemHealth: 0
   });
 
-  // New state for location info (updated to include fire)
+  // Location info state (includes fire)
   const [locationInfo, setLocationInfo] = useState(null);
   const [nearbyPlaces, setNearbyPlaces] = useState({ hospitals: [], police: [], fire: [] });
   const [geocodingLoading, setGeocodingLoading] = useState(false);
@@ -98,7 +98,6 @@ const Dashboard = () => {
   // Generate notifications from critical events
   useEffect(() => {
     const newNotifications = [];
-    // Add notification for each new accident (simplified: last 5 minutes)
     const fiveMinAgo = new Date(Date.now() - 5 * 60000);
     accidents.forEach(acc => {
       const accTime = new Date(acc.timestamp);
@@ -111,7 +110,6 @@ const Dashboard = () => {
         });
       }
     });
-    // Add notifications for vehicles with fire
     vehicles.forEach(v => {
       if (v.fire_detected) {
         newNotifications.push({
@@ -122,7 +120,7 @@ const Dashboard = () => {
         });
       }
     });
-    setNotifications(newNotifications.slice(0, 5)); // keep latest 5
+    setNotifications(newNotifications.slice(0, 5));
   }, [vehicles, accidents]);
 
   // Update map center to first valid vehicle
@@ -205,6 +203,23 @@ const Dashboard = () => {
 
     console.log("🎯 selectedMarker changed:", selectedMarker);
 
+    // Helper to retry failed requests (optional)
+    const fetchWithRetry = async (url, retries = 3) => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          return await API.get(url);
+        } catch (error) {
+          if (error.response?.status === 429 && i < retries - 1) {
+            const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s
+            console.log(`Rate limited. Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          } else {
+            throw error;
+          }
+        }
+      }
+    };
+
     const fetchLocationInfo = async () => {
       setGeocodingLoading(true);
       setGeocodingError(null);
@@ -215,20 +230,16 @@ const Dashboard = () => {
         console.log("✅ Reverse geocode response:", geoRes.data);
         setLocationInfo(geoRes.data);
 
-        // Fetch nearby hospitals, police stations, and fire stations
-        console.log("📡 Calling nearby hospitals, police, and fire stations...");
-        const [hospitalsRes, policeRes, fireRes] = await Promise.all([
-          API.get(`/geocode/nearby?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}&type=hospital&radius=2000`),
-          API.get(`/geocode/nearby?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}&type=police&radius=2000`),
-          API.get(`/geocode/nearby?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}&type=fire_station&radius=2000`)
-        ]);
-        console.log("✅ Nearby hospitals:", hospitalsRes.data);
-        console.log("✅ Nearby police:", policeRes.data);
-        console.log("✅ Nearby fire stations:", fireRes.data);
+        // Single request for hospitals, police, fire stations
+        console.log("📡 Calling nearby-multi for hospitals, police, fire...");
+        const nearbyRes = await fetchWithRetry(
+          `/geocode/nearby-multi?lat=${selectedMarker.latitude}&lon=${selectedMarker.longitude}&types=hospital,police,fire_station&radius=2000`
+        );
+        console.log("✅ Nearby multi response:", nearbyRes.data);
         setNearbyPlaces({
-          hospitals: hospitalsRes.data.slice(0, 3),
-          police: policeRes.data.slice(0, 3),
-          fire: fireRes.data.slice(0, 3)
+          hospitals: (nearbyRes.data.hospital || []).slice(0, 3),
+          police: (nearbyRes.data.police || []).slice(0, 3),
+          fire: (nearbyRes.data.fire_station || []).slice(0, 3)
         });
       } catch (error) {
         console.error('❌ Failed to fetch location info:', error);
