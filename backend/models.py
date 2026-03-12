@@ -53,3 +53,11 @@ class Device(BaseModel):
     is_active: bool = False
     registered_at: Optional[datetime] = None
     claimed_at: Optional[datetime] = None
+
+
+class PostAccidentReport(BaseModel):
+    blackbox_id: str
+    human_presence: bool
+    breathing_detected: bool
+    fire_detected: bool
+    timestamp: Optional[datetime] = None

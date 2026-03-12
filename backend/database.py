@@ -62,6 +62,7 @@ blackbox_db = None
 devices_collection = None
 live_sensor_collection = None
 accident_collection = None
+post_accident_collection = None   # ← ADDED
 
 try:
 
@@ -80,12 +81,14 @@ try:
     devices_collection = blackbox_db["devices"]
     live_sensor_collection = blackbox_db["live_sensor_data"]
     accident_collection = blackbox_db["accident_records"]
+    post_accident_collection = blackbox_db["post_accident_reports"]   # ← ADDED
 
     print("✅ Blackbox DB Connected")
     print("✅ Collections:")
     print("   - devices")
     print("   - live_sensor_data")
     print("   - accident_records")
+    print("   - post_accident_reports")   # ← ADDED
 
 except Exception as e:
     print(f"⚠️ Blackbox DB warning: {e}")
@@ -99,5 +102,6 @@ __all__ = [
     'blackbox_db',
     'devices_collection',
     'live_sensor_collection',
-    'accident_collection'
+    'accident_collection',
+    'post_accident_collection',   
 ]

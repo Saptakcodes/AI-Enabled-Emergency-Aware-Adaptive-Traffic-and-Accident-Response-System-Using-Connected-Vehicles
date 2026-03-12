@@ -2,12 +2,21 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from auth import router as auth_router
 
-from database import live_sensor_collection, accident_collection, devices_collection  # added devices_collection
-from models import SensorData, AccidentRecord
+from database import (
+    live_sensor_collection,
+    accident_collection,
+    devices_collection,
+    post_accident_collection,          # ← ADDED
+)
+from models import (
+    SensorData,
+    AccidentRecord,
+    PostAccidentReport,                # ← ADDED
+)
 from datetime import datetime
 
 from geocoding import router as geocoding_router
-from devices import router as devices_router  # added devices router
+from devices import router as devices_router
 
 app = FastAPI()
 
@@ -28,7 +37,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(geocoding_router)
-app.include_router(devices_router)  # added
+app.include_router(devices_router)
 
 @app.get("/")
 def home():
@@ -94,7 +103,28 @@ async def record_accident(data: AccidentRecord):
 
 
 # =========================
-# NEW API → GET LIVE SENSOR DATA
+# NEW: POST-ACCIDENT DATA
+# =========================
+@app.post("/post-accident")
+async def create_post_accident(data: PostAccidentReport):
+    """Receive continuous monitoring data after an accident."""
+    record = data.dict()
+    record["timestamp"] = datetime.utcnow()
+
+    # PRINT DATA IN TERMINAL
+    print("\n🚑 POST-ACCIDENT DATA RECEIVED")
+    print(record)
+
+    result = await post_accident_collection.insert_one(record)
+
+    return {
+        "message": "Post-accident data stored",
+        "id": str(result.inserted_id)
+    }
+
+
+# =========================
+# GET LIVE SENSOR DATA
 # =========================
 @app.get("/live-data")
 async def get_live_data():
@@ -108,7 +138,7 @@ async def get_live_data():
 
 
 # =========================
-# NEW API → GET ACCIDENT RECORDS
+# GET ACCIDENT RECORDS
 # =========================
 @app.get("/accidents")
 async def get_accidents():
