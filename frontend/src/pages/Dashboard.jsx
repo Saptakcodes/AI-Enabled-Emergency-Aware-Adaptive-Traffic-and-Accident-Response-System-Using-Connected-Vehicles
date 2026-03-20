@@ -344,7 +344,7 @@ const Dashboard = () => {
                 <span className="text-xs text-gray-500 hidden sm:inline">{liveTime.toLocaleTimeString()}</span>
               </div>
 
-              {/* Traffic Management button - using FaTrafficLight */}
+              {/* Traffic Management button */}
               <button
                 onClick={() => navigate('/traffic-management')}
                 className="p-2 hover:bg-gray-100 rounded-full"
