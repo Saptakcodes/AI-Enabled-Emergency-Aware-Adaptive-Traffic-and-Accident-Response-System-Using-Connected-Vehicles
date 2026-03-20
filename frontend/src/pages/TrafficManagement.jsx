@@ -4,12 +4,23 @@ import { useNavigate } from 'react-router-dom';
 import API from '../api';
 import LiveMap from '../components/LiveMap';
 import { 
-  FaTrafficLight, FaMapMarkerAlt, FaCar, FaChartLine, FaClock, FaExclamationTriangle,
-  FaArrowLeft, FaRedoAlt, FaBolt, FaList, FaEye, FaSync
+  FaArrowLeft, FaList, FaBolt, FaCar, FaTrafficLight, FaChartLine
 } from 'react-icons/fa';
 import { MdEmergency, MdRefresh } from 'react-icons/md';
-import { GiTrafficLights } from 'react-icons/gi';
-import { motion, AnimatePresence } from 'framer-motion';
+
+// Helper function
+const haversine = (lat1, lon1, lat2, lon2) => {
+  const R = 6371000;
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
 
 const TrafficManagement = () => {
   const navigate = useNavigate();
@@ -22,7 +33,6 @@ const TrafficManagement = () => {
   const [preemptions, setPreemptions] = useState([]);
   const [vehicleDensity, setVehicleDensity] = useState({});
 
-  // Fetch signals and vehicle data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -33,12 +43,10 @@ const TrafficManagement = () => {
         setSignals(signalsRes.data);
         setVehicles(vehiclesRes.data);
         setLastUpdated(new Date());
-        
-        // Calculate vehicle density near each signal (for visualization)
+
         const density = {};
         signalsRes.data.forEach(signal => {
           const [lon, lat] = signal.location.coordinates;
-          // Count vehicles within 200m (simple approximation)
           const nearby = vehiclesRes.data.filter(v => {
             if (v.latitude === 0 && v.longitude === 0) return false;
             const dist = haversine(v.latitude, v.longitude, lat, lon);
@@ -55,32 +63,16 @@ const TrafficManagement = () => {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 3000); // refresh every 3 seconds
+    const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
   }, []);
 
-  // Haversine distance helper
-  const haversine = (lat1, lon1, lat2, lon2) => {
-    const R = 6371000;
-    const φ1 = lat1 * Math.PI / 180;
-    const φ2 = lat2 * Math.PI / 180;
-    const Δφ = (lat2 - lat1) * Math.PI / 180;
-    const Δλ = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
-
-  // Override signal
   const handleOverride = async (signalId, newState, duration) => {
     try {
       await API.put(`/signals/${signalId}/override`, {
         new_state: newState,
         duration_seconds: duration
       });
-      // Add to preemption log (manual override)
       const signal = signals.find(s => s.signal_id === signalId);
       setPreemptions(prev => [{
         id: Date.now(),
@@ -95,11 +87,8 @@ const TrafficManagement = () => {
     }
   };
 
-  // Handle marker click on map
   const handleMarkerClick = (item, type) => {
-    if (type === 'signal') {
-      setSelectedSignal(item);
-    }
+    if (type === 'signal') setSelectedSignal(item);
   };
 
   if (loading) {
@@ -112,18 +101,14 @@ const TrafficManagement = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      {/* Header */}
       <header className="bg-black/30 backdrop-blur-md border-b border-gray-700 sticky top-0 z-50">
         <div className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="p-2 hover:bg-gray-700 rounded-lg transition"
-            >
+            <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-gray-700 rounded-lg transition">
               <FaArrowLeft className="text-white text-xl" />
             </button>
             <div className="flex items-center space-x-2">
-              <GiTrafficLights className="text-3xl text-blue-400" />
+              <FaTrafficLight className="text-3xl text-blue-400" />
               <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">
                 Adaptive Traffic Management
               </h1>
@@ -133,14 +118,9 @@ const TrafficManagement = () => {
             <div className="flex items-center space-x-2 bg-gray-800 px-3 py-1 rounded-full">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span className="text-xs text-green-400">LIVE</span>
-              <span className="text-xs text-gray-400">
-                {lastUpdated?.toLocaleTimeString()}
-              </span>
+              <span className="text-xs text-gray-400">{lastUpdated?.toLocaleTimeString()}</span>
             </div>
-            <button
-              onClick={() => window.location.reload()}
-              className="p-2 hover:bg-gray-700 rounded-lg transition"
-            >
+            <button onClick={() => window.location.reload()} className="p-2 hover:bg-gray-700 rounded-lg transition">
               <MdRefresh className="text-white text-xl" />
             </button>
           </div>
@@ -148,7 +128,6 @@ const TrafficManagement = () => {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
-        {/* Map Section */}
         <div className="lg:col-span-2 bg-gray-800 rounded-xl overflow-hidden shadow-xl border border-gray-700">
           <div className="h-[600px]">
             <LiveMap
@@ -162,9 +141,7 @@ const TrafficManagement = () => {
           </div>
         </div>
 
-        {/* Right Panel */}
         <div className="space-y-6">
-          {/* Signal Status List */}
           <div className="bg-gray-800 rounded-xl p-4 shadow-xl border border-gray-700">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-white flex items-center">
@@ -175,12 +152,7 @@ const TrafficManagement = () => {
             </div>
             <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
               {signals.map(signal => (
-                <div
-                  key={signal.signal_id}
-                  className={`bg-gray-700 rounded-lg p-3 transition-all ${
-                    selectedSignal?.signal_id === signal.signal_id ? 'ring-2 ring-blue-500' : ''
-                  }`}
-                >
+                <div key={signal.signal_id} className={`bg-gray-700 rounded-lg p-3 transition-all ${selectedSignal?.signal_id === signal.signal_id ? 'ring-2 ring-blue-500' : ''}`}>
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="text-white font-medium">{signal.location_name || signal.signal_id}</p>
@@ -188,55 +160,27 @@ const TrafficManagement = () => {
                     </div>
                     <div className={`px-3 py-1 rounded-full text-xs font-bold ${
                       signal.current_state === 'red' ? 'bg-red-600 text-white' :
-                      signal.current_state === 'yellow' ? 'bg-yellow-500 text-black' :
-                      'bg-green-600 text-white'
+                      signal.current_state === 'yellow' ? 'bg-yellow-500 text-black' : 'bg-green-600 text-white'
                     }`}>
                       {signal.current_state.toUpperCase()}
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-xs text-gray-400">
                     <span>🚗 Nearby: {vehicleDensity[signal.signal_id] || 0}</span>
-                    {signal.override_active && (
-                      <span className="text-orange-400 flex items-center">
-                        <FaBolt className="mr-1" /> Override
-                      </span>
-                    )}
-                    {signal.preempted_by && (
-                      <span className="text-red-400 flex items-center">
-                        <MdEmergency className="mr-1" /> Preempted
-                      </span>
-                    )}
+                    {signal.override_active && <span className="text-orange-400 flex items-center"><FaBolt className="mr-1" /> Override</span>}
+                    {signal.preempted_by && <span className="text-red-400 flex items-center"><MdEmergency className="mr-1" /> Preempted</span>}
                   </div>
                   <div className="mt-2 flex space-x-2">
-                    <button
-                      onClick={() => handleOverride(signal.signal_id, 'green', overrideDuration)}
-                      className="flex-1 px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs text-white transition"
-                    >
-                      Force Green
-                    </button>
-                    <button
-                      onClick={() => handleOverride(signal.signal_id, 'red', overrideDuration)}
-                      className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs text-white transition"
-                    >
-                      Force Red
-                    </button>
-                    <button
-                      onClick={() => handleOverride(signal.signal_id, 'yellow', 5)}
-                      className="flex-1 px-2 py-1 bg-yellow-500 hover:bg-yellow-600 rounded text-xs text-black transition"
-                    >
-                      Force Yellow
-                    </button>
+                    <button onClick={() => handleOverride(signal.signal_id, 'green', overrideDuration)} className="flex-1 px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs text-white transition">Force Green</button>
+                    <button onClick={() => handleOverride(signal.signal_id, 'red', overrideDuration)} className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs text-white transition">Force Red</button>
+                    <button onClick={() => handleOverride(signal.signal_id, 'yellow', 5)} className="flex-1 px-2 py-1 bg-yellow-500 hover:bg-yellow-600 rounded text-xs text-black transition">Force Yellow</button>
                   </div>
                 </div>
               ))}
             </div>
             <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
               <span>Override duration (s):</span>
-              <select
-                value={overrideDuration}
-                onChange={(e) => setOverrideDuration(Number(e.target.value))}
-                className="bg-gray-700 text-white rounded px-2 py-1"
-              >
+              <select value={overrideDuration} onChange={(e) => setOverrideDuration(Number(e.target.value))} className="bg-gray-700 text-white rounded px-2 py-1">
                 <option value={5}>5s</option>
                 <option value={10}>10s</option>
                 <option value={20}>20s</option>
@@ -245,7 +189,6 @@ const TrafficManagement = () => {
             </div>
           </div>
 
-          {/* Preemption Log */}
           <div className="bg-gray-800 rounded-xl p-4 shadow-xl border border-gray-700">
             <h2 className="text-lg font-semibold text-white flex items-center mb-3">
               <MdEmergency className="mr-2 text-red-400" />
@@ -268,7 +211,6 @@ const TrafficManagement = () => {
             </div>
           </div>
 
-          {/* Traffic Stats */}
           <div className="bg-gray-800 rounded-xl p-4 shadow-xl border border-gray-700">
             <h2 className="text-lg font-semibold text-white flex items-center mb-3">
               <FaChartLine className="mr-2 text-green-400" />
@@ -287,9 +229,7 @@ const TrafficManagement = () => {
               </div>
               <div className="bg-gray-700 rounded p-3 text-center">
                 <FaBolt className="text-orange-400 text-xl mx-auto mb-1" />
-                <p className="text-2xl font-bold text-white">
-                  {signals.filter(s => s.override_active).length}
-                </p>
+                <p className="text-2xl font-bold text-white">{signals.filter(s => s.override_active).length}</p>
                 <p className="text-xs text-gray-400">Active Overrides</p>
               </div>
               <div className="bg-gray-700 rounded p-3 text-center">
