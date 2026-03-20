@@ -17,6 +17,8 @@ class UserLogin(BaseModel):
 from datetime import datetime
 from typing import Optional
 
+#accident-part
+
 class SensorData(BaseModel):
     blackbox_id: str
     latitude: float
@@ -61,3 +63,24 @@ class PostAccidentReport(BaseModel):
     breathing_detected: bool
     fire_detected: bool
     timestamp: Optional[datetime] = None
+
+
+#traffic-simulation-table-part
+
+class TrafficSignal(BaseModel):
+    signal_id: str
+    location: dict                     # GeoJSON Point: {"type": "Point", "coordinates": [lon, lat]}
+    location_name: Optional[str] = None
+    current_state: Literal["red", "yellow", "green"]
+    last_updated: Optional[datetime] = None
+    override_active: bool = False
+    override_expiry: Optional[datetime] = None
+    preempted_by: Optional[str] = None
+    preemption_end_time: Optional[datetime] = None
+    base_cycle_time: int = 30
+    current_cycle_time: int = 30
+
+
+class SignalOverride(BaseModel):
+    new_state: Literal["red", "yellow", "green"]
+    duration_seconds: Optional[int] = None

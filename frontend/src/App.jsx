@@ -9,6 +9,7 @@ import Offline from "./pages/Offline";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import AccidentReports from './pages/AccidentReports';
 import ClaimDevice from './pages/ClaimDevice';
+import TrafficManagement from './pages/TrafficManagement';
 
 function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -39,6 +40,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/accident-reports" element={<AccidentReports />} />
         <Route path="/claim-device" element={<ClaimDevice />} />
+        <Route path="/traffic-management" element={<TrafficManagement />} />
       </Routes>
       <PWAInstallPrompt />
     </div>

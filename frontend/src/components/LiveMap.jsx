@@ -31,10 +31,10 @@ const accidentIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-// Helper to compare coordinates (ignores small floating point differences)
+// Helper to compare coordinates
 const isSameCoords = (c1, c2) => {
   if (!c1 || !c2) return false;
-  const threshold = 0.0001; // ~10 meters
+  const threshold = 0.0001;
   return Math.abs(c1[0] - c2[0]) < threshold && Math.abs(c1[1] - c2[1]) < threshold;
 };
 
@@ -53,7 +53,7 @@ function ChangeView({ center }) {
   return null;
 }
 
-// Optimize marker rendering with React.memo
+// Vehicle Marker
 const VehicleMarker = React.memo(({ vehicle, onClick }) => (
   <Marker
     position={[vehicle.latitude, vehicle.longitude]}
@@ -82,6 +82,7 @@ const VehicleMarker = React.memo(({ vehicle, onClick }) => (
   </Marker>
 ));
 
+// Accident Marker
 const AccidentMarker = React.memo(({ accident, onClick }) => (
   <Marker
     position={[accident.latitude, accident.longitude]}
@@ -111,14 +112,42 @@ const AccidentMarker = React.memo(({ accident, onClick }) => (
   </Marker>
 ));
 
-// Google Maps iframe view (simple, no markers) with refresh prevention
+// Signal Marker with colored circle
+const getSignalIcon = (state) => {
+  const colors = { red: '#ef4444', yellow: '#f59e0b', green: '#10b981' };
+  return L.divIcon({
+    className: 'signal-marker',
+    html: `<div style="background-color: ${colors[state]}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10]
+  });
+};
+
+const SignalMarker = React.memo(({ signal, onClick }) => (
+  <Marker
+    position={[signal.location.coordinates[1], signal.location.coordinates[0]]}
+    icon={getSignalIcon(signal.current_state)}
+    eventHandlers={{ click: () => onClick(signal, 'signal') }}
+  >
+    <Popup>
+      <div className="p-2">
+        <h4 className="font-semibold">🚦 Traffic Light</h4>
+        <p className="text-sm text-gray-600">{signal.location_name || signal.signal_id}</p>
+        <p>State: <span className={`font-bold text-${signal.current_state}-600`}>{signal.current_state.toUpperCase()}</span></p>
+        {signal.override_active && <p className="text-orange-500">🔧 Overridden</p>}
+        {signal.preempted_by && <p className="text-red-500">🚑 Emergency preemption</p>}
+      </div>
+    </Popup>
+  </Marker>
+));
+
+// Google Maps iframe view
 const GoogleMapsView = React.memo(({ center, zoom }) => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const prevCenterRef = useRef(center);
   const [src, setSrc] = useState('');
 
   useEffect(() => {
-    // Only update if center changed significantly
     if (!isSameCoords(prevCenterRef.current, center)) {
       const newSrc = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${center[0]},${center[1]}&zoom=${zoom}&maptype=satellite`;
       setSrc(newSrc);
@@ -142,12 +171,11 @@ const GoogleMapsView = React.memo(({ center, zoom }) => {
   );
 });
 
-const LiveMap = ({ vehicles = [], accidents = [], center = [22.5726, 88.3639], zoom = 14, onMarkerClick, mapType = 'interactive' }) => {
+const LiveMap = ({ vehicles = [], accidents = [], signals = [], center = [22.5726, 88.3639], zoom = 14, onMarkerClick, mapType = 'interactive' }) => {
   if (mapType === 'simple') {
     return <GoogleMapsView center={center} zoom={zoom} />;
   }
 
-  // Interactive Leaflet map
   const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
   const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; CartoDB';
 
@@ -168,9 +196,11 @@ const LiveMap = ({ vehicles = [], accidents = [], center = [22.5726, 88.3639], z
         {accidents.map(accident => (
           <AccidentMarker key={accident._id} accident={accident} onClick={onMarkerClick} />
         ))}
+        {signals.map(signal => (
+          <SignalMarker key={signal.signal_id} signal={signal} onClick={onMarkerClick} />
+        ))}
       </MapContainer>
 
-      {/* Floating button to open current center in Google Maps */}
       <a
         href={`https://www.google.com/maps?q=${center[0]},${center[1]}`}
         target="_blank"
