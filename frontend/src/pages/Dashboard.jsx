@@ -1,5 +1,4 @@
 // src/pages/Dashboard.jsx
-import { GiTrafficLights } from 'react-icons/gi';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
@@ -337,7 +336,6 @@ const Dashboard = () => {
               </span>
               <span className="text-gray-400 text-xs hidden lg:inline">Intelligent Emergency Response</span>
             </div>
-            
 
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2 bg-blue-50 px-3 py-1 rounded-full">
@@ -346,14 +344,14 @@ const Dashboard = () => {
                 <span className="text-xs text-gray-500 hidden sm:inline">{liveTime.toLocaleTimeString()}</span>
               </div>
 
-          {/* Traffic Management button */}
-        <button
-          onClick={() => navigate('/traffic-management')}
-          className="p-2 hover:bg-gray-100 rounded-full"
-          title="Traffic Management"
-        >
-          <GiTrafficLights className="text-xl text-gray-600" />
-        </button>
+              {/* Traffic Management button - using FaTrafficLight */}
+              <button
+                onClick={() => navigate('/traffic-management')}
+                className="p-2 hover:bg-gray-100 rounded-full"
+                title="Traffic Management"
+              >
+                <FaTrafficLight className="text-xl text-gray-600" />
+              </button>
 
               {/* Notifications */}
               <div className="relative">
