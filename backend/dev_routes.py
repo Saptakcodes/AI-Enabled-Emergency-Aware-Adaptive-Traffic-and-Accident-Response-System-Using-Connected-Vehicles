@@ -16,14 +16,14 @@ def dev_only():
 @router.post("/seed-signals", dependencies=[Depends(dev_only)])
 async def seed_traffic_signals():
     """Seed a few realistic traffic signals with geocoded names."""
-    # Clear existing (optional – you can comment this out to keep existing)
+    # Clear existing (optional – comment out to keep existing signals)
     await traffic_signals_collection.delete_many({})
 
     # Define intersections with coordinates (lon, lat)
     raw_signals = [
-        {"signal_id": "intersection_1", "lon": 88.3639, "lat": 22.5726},
-        {"signal_id": "intersection_2", "lon": 88.3739, "lat": 22.5826},
-        {"signal_id": "intersection_3", "lon": 88.3539, "lat": 22.5626},
+        {"signal_id": "device_test_1", "lon": 88.471687, "lat": 22.693016},  # your device location
+        {"signal_id": "intersection_2", "lon": 88.473200, "lat": 22.694500},  # example
+        {"signal_id": "intersection_3", "lon": 88.470100, "lat": 22.691800},  # example
     ]
 
     seeded = []

@@ -3,6 +3,7 @@ import aiohttp
 import asyncio
 from fastapi import APIRouter, HTTPException
 from typing import List, Dict, Any
+from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/geocode", tags=["geocoding"])
 
@@ -10,25 +11,39 @@ router = APIRouter(prefix="/geocode", tags=["geocoding"])
 NOMINATIM_URL = "https://nominatim.openstreetmap.org"
 USER_AGENT = "AlertSystem/1.0 (contact: saptakchaki.official@gmail.com)"
 
-# Rate limiting: 1 request per second
+# Rate limiting with lock
 _last_request_time = 0
+_request_lock = asyncio.Lock()
+
+# Simple cache for reverse geocode results (expires after 1 hour)
+_cache = {}
+_CACHE_TTL = timedelta(hours=1)
 
 async def rate_limited_request(url: str, params: dict) -> dict:
+    """Serialize requests and enforce at least 1 second between them."""
     global _last_request_time
-    now = asyncio.get_event_loop().time()
-    time_since_last = now - _last_request_time
-    if time_since_last < 1.0:
-        await asyncio.sleep(1.0 - time_since_last)
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params, headers={"User-Agent": USER_AGENT}) as resp:
-            _last_request_time = asyncio.get_event_loop().time()
-            if resp.status != 200:
-                raise HTTPException(status_code=resp.status, detail="Geocoding service error")
-            return await resp.json()
+    async with _request_lock:
+        now = asyncio.get_event_loop().time()
+        time_since_last = now - _last_request_time
+        if time_since_last < 1.0:
+            await asyncio.sleep(1.0 - time_since_last)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params, headers={"User-Agent": USER_AGENT}) as resp:
+                _last_request_time = asyncio.get_event_loop().time()
+                if resp.status != 200:
+                    raise HTTPException(status_code=resp.status, detail="Geocoding service error")
+                return await resp.json()
 
 @router.get("/reverse")
 async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
-    """Get address details from coordinates using Nominatim."""
+    """Get address details from coordinates using Nominatim, with caching."""
+    # Check cache first
+    cache_key = f"{lat},{lon}"
+    if cache_key in _cache:
+        cached_result, cached_time = _cache[cache_key]
+        if datetime.utcnow() - cached_time < _CACHE_TTL:
+            return cached_result
+
     params = {
         "lat": lat,
         "lon": lon,
@@ -39,6 +54,7 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
     data = await rate_limited_request(f"{NOMINATIM_URL}/reverse", params)
     if not data:
         raise HTTPException(status_code=404, detail="No address found")
+
     address = data.get("address", {})
     result = {
         "display_name": data.get("display_name", ""),
@@ -50,9 +66,11 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
         "neighbourhood": address.get("neighbourhood"),
         "suburb": address.get("suburb"),
     }
+    # Store in cache
+    _cache[cache_key] = (result, datetime.utcnow())
     return result
 
-# Old single‑type endpoint (kept for backward compatibility)
+# The rest of the file (nearby, nearby-multi) remains unchanged
 @router.get("/nearby")
 async def nearby_places(lat: float, lon: float, type: str = "hospital", radius: int = 2000) -> List[Dict[str, Any]]:
     """Find nearby amenities of a single type using Overpass API."""
@@ -93,7 +111,6 @@ async def nearby_places(lat: float, lon: float, type: str = "hospital", radius: 
     results.sort(key=lambda x: x["distance"])
     return results
 
-# NEW multi‑type endpoint
 @router.get("/nearby-multi")
 async def nearby_places_multi(
     lat: float,
