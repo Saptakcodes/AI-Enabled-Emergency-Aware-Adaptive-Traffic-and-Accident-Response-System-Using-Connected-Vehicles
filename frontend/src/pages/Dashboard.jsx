@@ -314,73 +314,64 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <header className="bg-black/30 backdrop-blur-md border-b border-gray-700 sticky top-0 z-50">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <MdEmergency className="text-2xl sm:text-3xl text-blue-600" />
-              <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+              <MdEmergency className="text-2xl sm:text-3xl text-blue-400" />
+              <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">
                 ALERT
               </span>
-              <span className="text-gray-400 text-xs hidden lg:inline">Intelligent Emergency Response</span>
+              <span className="text-gray-500 text-xs hidden lg:inline">Intelligent Emergency Response</span>
             </div>
 
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 bg-blue-50 px-3 py-1 rounded-full">
+              <div className="flex items-center space-x-2 bg-gray-800 px-3 py-1 rounded-full">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-semibold text-green-600">LIVE</span>
-                <span className="text-xs text-gray-500 hidden sm:inline">{liveTime.toLocaleTimeString()}</span>
+                <span className="text-sm font-semibold text-green-400">LIVE</span>
+                <span className="text-xs text-gray-400 hidden sm:inline">{liveTime.toLocaleTimeString()}</span>
               </div>
-
-              {/* Traffic Management button */}
-              <button
-                onClick={() => navigate('/traffic-management')}
-                className="p-2 hover:bg-gray-100 rounded-full"
-                title="Traffic Management"
-              >
-                <FaTrafficLight className="text-xl text-gray-600" />
-              </button>
 
               {/* Notifications */}
               <div className="relative">
-                <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 hover:bg-gray-100 rounded-full">
-                  <FaBell className="text-xl text-gray-600" />
+                <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 hover:bg-gray-700 rounded-full transition">
+                  <FaBell className="text-xl text-gray-300" />
                   {notifications.length > 0 && (
                     <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
                   )}
                 </button>
                 {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
-                    <div className="p-3 border-b border-gray-200 flex justify-between items-center">
-                      <h3 className="font-semibold">Alerts</h3>
-                      <button className="text-xs text-blue-600">Clear</button>
+                  <div className="absolute right-0 mt-2 w-80 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50">
+                    <div className="p-3 border-b border-gray-700 flex justify-between items-center">
+                      <h3 className="font-semibold text-white">Alerts</h3>
+                      <button className="text-xs text-blue-400">Clear</button>
                     </div>
                     <div className="max-h-96 overflow-y-auto">
                       {notifications.length === 0 ? (
                         <div className="p-4 text-center text-gray-500 text-sm">No new alerts</div>
                       ) : (
                         notifications.map(notif => (
-                          <div key={notif.id} className="p-3 hover:bg-gray-50 border-b last:border-0">
+                          <div key={notif.id} className="p-3 hover:bg-gray-700 border-b border-gray-700 last:border-0">
                             <div className="flex items-start space-x-2">
                               {notif.type === 'emergency' ? (
-                                <MdEmergency className="text-red-500 mt-0.5 flex-shrink-0" />
+                                <MdEmergency className="text-red-400 mt-0.5 flex-shrink-0" />
                               ) : (
                                 <MdWarning className="text-yellow-500 mt-0.5 flex-shrink-0" />
                               )}
                               <div>
-                                <p className="text-sm text-gray-800">{notif.message}</p>
+                                <p className="text-sm text-gray-200">{notif.message}</p>
                                 <span className="text-xs text-gray-400">{notif.time}</span>
                               </div>
                             </div>
@@ -394,35 +385,35 @@ const Dashboard = () => {
 
               {/* User Menu - Enhanced */}
               <div className="relative">
-                <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center space-x-2 hover:bg-gray-100 rounded-lg p-2">
+                <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center space-x-2 hover:bg-gray-700 rounded-lg p-2 transition">
                   {user.avatar ? (
                     <img src={user.avatar} alt="avatar" className="w-8 h-8 rounded-full" />
                   ) : (
-                    <FaUserCircle className="text-3xl text-gray-600" />
+                    <FaUserCircle className="text-3xl text-gray-300" />
                   )}
                   <div className="hidden md:block text-left">
-                    <p className="text-sm font-semibold text-gray-800">{user.name}</p>
-                    <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                    <p className="text-sm font-semibold text-white">{user.name}</p>
+                    <p className="text-xs text-gray-400 capitalize">{user.role}</p>
                   </div>
                   <FaChevronDown className="text-xs text-gray-400" />
                 </button>
                 {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                  <div className="absolute right-0 mt-2 w-64 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50">
                     {/* User details section */}
-                    <div className="px-4 py-3 border-b border-gray-200">
-                      <p className="text-sm font-semibold text-gray-800">{user.name}</p>
-                      <p className="text-xs text-gray-500">{user.email}</p>
-                      <p className="text-xs text-gray-500 mt-1">
+                    <div className="px-4 py-3 border-b border-gray-700">
+                      <p className="text-sm font-semibold text-white">{user.name}</p>
+                      <p className="text-xs text-gray-400">{user.email}</p>
+                      <p className="text-xs text-gray-400 mt-1">
                         Vehicle: {user.vehicleNumber || 'Not set'} ({user.role})
                       </p>
                     </div>
                     <div className="py-1">
-                      <button className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm">
-                        <FaUser className="text-xs text-gray-600" />
+                      <button className="w-full text-left px-4 py-2 hover:bg-gray-700 flex items-center space-x-2 text-sm text-gray-200 transition">
+                        <FaUser className="text-xs text-gray-400" />
                         <span>Profile</span>
                       </button>
-                      <button className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm">
-                        <FaCog className="text-xs text-gray-600" />
+                      <button className="w-full text-left px-4 py-2 hover:bg-gray-700 flex items-center space-x-2 text-sm text-gray-200 transition">
+                        <FaCog className="text-xs text-gray-400" />
                         <span>Settings</span>
                       </button>
                       {/* Claim Device - navigates to separate page */}
@@ -431,13 +422,13 @@ const Dashboard = () => {
                           setShowUserMenu(false);
                           navigate('/claim-device');
                         }}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm"
+                        className="w-full text-left px-4 py-2 hover:bg-gray-700 flex items-center space-x-2 text-sm text-gray-200 transition"
                       >
-                        <FaShieldAlt className="text-xs text-blue-600" />
+                        <FaShieldAlt className="text-xs text-blue-400" />
                         <span>Claim Device</span>
                       </button>
-                      <hr className="border-gray-200" />
-                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 text-sm text-red-600">
+                      <hr className="border-gray-700" />
+                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-gray-700 flex items-center space-x-2 text-sm text-red-400 transition">
                         <FaSignOutAlt className="text-xs" />
                         <span>Logout</span>
                       </button>
@@ -453,54 +444,54 @@ const Dashboard = () => {
       <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-100 hover:shadow-md transition">
+          <div className="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700 hover:shadow-xl transition">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-blue-600 text-sm flex items-center"><FaCar className="mr-1" /> TOTAL VEHICLES</p>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{animatedStats.totalVehicles}</p>
-                <p className="text-xs text-green-600 mt-2 flex items-center"><FaChartLine className="mr-1" /> Registered</p>
+                <p className="text-blue-400 text-sm flex items-center"><FaCar className="mr-1" /> TOTAL VEHICLES</p>
+                <p className="text-3xl font-bold text-white mt-2">{animatedStats.totalVehicles}</p>
+                <p className="text-xs text-green-400 mt-2 flex items-center"><FaChartLine className="mr-1" /> Registered</p>
               </div>
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <FaCar className="text-xl text-blue-600" />
+              <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+                <FaCar className="text-xl text-blue-400" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-green-100 hover:shadow-md transition">
+          <div className="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700 hover:shadow-xl transition">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-green-600 text-sm flex items-center"><FaTachometerAlt className="mr-1" /> ACTIVE VEHICLES</p>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{animatedStats.activeVehicles}</p>
-                <p className="text-xs text-green-600 mt-2">Speed &gt; 0 km/h</p>
+                <p className="text-green-400 text-sm flex items-center"><FaTachometerAlt className="mr-1" /> ACTIVE VEHICLES</p>
+                <p className="text-3xl font-bold text-white mt-2">{animatedStats.activeVehicles}</p>
+                <p className="text-xs text-green-400 mt-2">Speed &gt; 0 km/h</p>
               </div>
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <FaTachometerAlt className="text-xl text-green-600" />
+              <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+                <FaTachometerAlt className="text-xl text-green-400" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-red-100 hover:shadow-md transition">
+          <div className="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700 hover:shadow-xl transition">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-red-600 text-sm flex items-center"><MdWarning className="mr-1" /> EMERGENCY VEHICLES</p>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{animatedStats.emergencyVehicles}</p>
-                <p className="text-xs text-red-600 mt-2">Fire/High impact</p>
+                <p className="text-red-400 text-sm flex items-center"><MdWarning className="mr-1" /> EMERGENCY VEHICLES</p>
+                <p className="text-3xl font-bold text-white mt-2">{animatedStats.emergencyVehicles}</p>
+                <p className="text-xs text-red-400 mt-2">Fire/High impact</p>
               </div>
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <MdWarning className="text-xl text-red-600" />
+              <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+                <MdWarning className="text-xl text-red-400" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-purple-100 hover:shadow-md transition">
+          <div className="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700 hover:shadow-xl transition">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-purple-600 text-sm flex items-center"><IoMdWarning className="mr-1" /> TODAY'S INCIDENTS</p>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{animatedStats.todayIncidents}</p>
-                <p className="text-xs text-purple-600 mt-2">+{stats.todayIncidents - stats.yesterdayIncidents} vs yesterday</p>
+                <p className="text-purple-400 text-sm flex items-center"><IoMdWarning className="mr-1" /> TODAY'S INCIDENTS</p>
+                <p className="text-3xl font-bold text-white mt-2">{animatedStats.todayIncidents}</p>
+                <p className="text-xs text-purple-400 mt-2">+{stats.todayIncidents - stats.yesterdayIncidents} vs yesterday</p>
               </div>
-              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                <IoMdWarning className="text-xl text-purple-600" />
+              <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+                <IoMdWarning className="text-xl text-purple-400" />
               </div>
             </div>
           </div>
@@ -509,22 +500,30 @@ const Dashboard = () => {
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Map Section */}
-          <div className="lg:col-span-2 bg-white rounded-xl p-4 shadow-md border border-gray-200">
+          <div className="lg:col-span-2 bg-gray-800 rounded-xl p-4 shadow-lg border border-gray-700">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-                <FaMapMarkerAlt className="text-blue-600 mr-2" />
+              <h2 className="text-lg font-semibold text-white flex items-center">
+                <FaMapMarkerAlt className="text-blue-400 mr-2" />
                 LIVE MAP
               </h2>
               <div className="flex space-x-2">
                 <button
                   onClick={() => setMapViewMode('interactive')}
-                  className={`px-3 py-1 rounded-lg text-sm ${mapViewMode === 'interactive' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                  className={`px-3 py-1 rounded-lg text-sm ${
+                    mapViewMode === 'interactive' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  } transition`}
                 >
                   Interactive
                 </button>
                 <button
                   onClick={() => setMapViewMode('simple')}
-                  className={`px-3 py-1 rounded-lg text-sm ${mapViewMode === 'simple' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                  className={`px-3 py-1 rounded-lg text-sm ${
+                    mapViewMode === 'simple' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  } transition`}
                 >
                   Satellite
                 </button>
@@ -541,50 +540,50 @@ const Dashboard = () => {
             </div>
             {/* Rich Marker Details Panel with fire stations and post-accident */}
             {selectedMarker && (
-              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="mt-3 p-3 bg-gray-700 border border-gray-600 rounded-lg">
                 <div className="flex justify-between items-start">
                   <div className="w-full">
-                    <p className="font-semibold text-gray-800">
+                    <p className="font-semibold text-white">
                       {selectedMarker.type === 'vehicle' ? '🚗 Vehicle' : '🚨 Accident'} Details
                     </p>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-gray-300 mt-1">
                       Speed: {selectedMarker.speed_kmph} km/h | Tilt: {selectedMarker.tilt_degree}° | Fire: {selectedMarker.fire_detected ? 'Yes' : 'No'}
                     </p>
 
                     {/* Post‑accident status (only for accident markers) */}
                     {selectedMarker.type === 'accident' && (
-                      <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-xs font-semibold text-red-700 flex items-center">
+                      <div className="mt-3 p-2 bg-red-900/50 border border-red-700 rounded-lg">
+                        <p className="text-xs font-semibold text-red-300 flex items-center">
                           <MdEmergency className="mr-1" /> Post‑Accident Monitoring
                         </p>
                         {postAccidentLoading ? (
-                          <p className="text-xs text-gray-500">Loading latest status...</p>
+                          <p className="text-xs text-gray-400">Loading latest status...</p>
                         ) : postAccidentLatest ? (
-                          <div className="mt-1 text-xs">
+                          <div className="mt-1 text-xs text-gray-300">
                             <div className="flex items-center space-x-2">
-                              <span className="text-gray-600">Human:</span>
-                              <span className={postAccidentLatest.human_presence ? 'text-green-600' : 'text-red-600'}>
+                              <span className="text-gray-400">Human:</span>
+                              <span className={postAccidentLatest.human_presence ? 'text-green-400' : 'text-red-400'}>
                                 {postAccidentLatest.human_presence ? '✅ Present' : '❌ Absent'}
                               </span>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <span className="text-gray-600">Breathing:</span>
-                              <span className={postAccidentLatest.breathing_detected ? 'text-green-600' : 'text-red-600'}>
+                              <span className="text-gray-400">Breathing:</span>
+                              <span className={postAccidentLatest.breathing_detected ? 'text-green-400' : 'text-red-400'}>
                                 {postAccidentLatest.breathing_detected ? '✅ Yes' : '❌ No'}
                               </span>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <span className="text-gray-600">Fire:</span>
-                              <span className={postAccidentLatest.fire_detected ? 'text-red-600' : 'text-green-600'}>
+                              <span className="text-gray-400">Fire:</span>
+                              <span className={postAccidentLatest.fire_detected ? 'text-red-400' : 'text-green-400'}>
                                 {postAccidentLatest.fire_detected ? '🔥 Detected' : '✅ None'}
                               </span>
                             </div>
-                            <p className="text-gray-400 mt-1">
+                            <p className="text-gray-500 mt-1">
                               Last update: {new Date(postAccidentLatest.timestamp).toLocaleTimeString()}
                             </p>
                           </div>
                         ) : (
-                          <p className="text-xs text-gray-400">No post‑accident data yet</p>
+                          <p className="text-xs text-gray-500">No post‑accident data yet</p>
                         )}
                       </div>
                     )}
@@ -592,24 +591,24 @@ const Dashboard = () => {
                     {geocodingLoading ? (
                       <p className="text-xs text-gray-400 mt-1">Loading location info...</p>
                     ) : geocodingError ? (
-                      <p className="text-xs text-red-500 mt-1">Error: {geocodingError}</p>
+                      <p className="text-xs text-red-400 mt-1">Error: {geocodingError}</p>
                     ) : locationInfo ? (
-                      <div className="mt-2 text-sm">
-                        <p className="font-medium text-gray-700">📍 {locationInfo.display_name}</p>
+                      <div className="mt-2 text-sm text-gray-300">
+                        <p className="font-medium text-white">📍 {locationInfo.display_name}</p>
                         <div className="grid grid-cols-2 gap-2 mt-1 text-xs">
-                          {locationInfo.road && <div><span className="text-gray-500">Road:</span> {locationInfo.road}</div>}
-                          {locationInfo.city && <div><span className="text-gray-500">City:</span> {locationInfo.city}</div>}
-                          {locationInfo.suburb && <div><span className="text-gray-500">Suburb:</span> {locationInfo.suburb}</div>}
-                          {locationInfo.neighbourhood && <div><span className="text-gray-500">Neighbourhood:</span> {locationInfo.neighbourhood}</div>}
+                          {locationInfo.road && <div><span className="text-gray-400">Road:</span> {locationInfo.road}</div>}
+                          {locationInfo.city && <div><span className="text-gray-400">City:</span> {locationInfo.city}</div>}
+                          {locationInfo.suburb && <div><span className="text-gray-400">Suburb:</span> {locationInfo.suburb}</div>}
+                          {locationInfo.neighbourhood && <div><span className="text-gray-400">Neighbourhood:</span> {locationInfo.neighbourhood}</div>}
                         </div>
                         {/* Nearby places */}
                         {(nearbyPlaces.hospitals.length > 0 || nearbyPlaces.police.length > 0 || nearbyPlaces.fire.length > 0) && (
-                          <div className="mt-2 pt-2 border-t border-blue-200">
-                            <p className="text-xs font-semibold text-gray-700">Nearby:</p>
+                          <div className="mt-2 pt-2 border-t border-gray-600">
+                            <p className="text-xs font-semibold text-gray-300">Nearby:</p>
                             {nearbyPlaces.hospitals.length > 0 && (
                               <div className="mt-1">
-                                <p className="text-xs text-red-600">🏥 Hospitals</p>
-                                <ul className="list-disc list-inside text-xs text-gray-600">
+                                <p className="text-xs text-red-400">🏥 Hospitals</p>
+                                <ul className="list-disc list-inside text-xs text-gray-400">
                                   {nearbyPlaces.hospitals.map((h, i) => (
                                     <li key={i}>{h.name} ({(h.distance/1000).toFixed(1)} km)</li>
                                   ))}
@@ -618,8 +617,8 @@ const Dashboard = () => {
                             )}
                             {nearbyPlaces.police.length > 0 && (
                               <div className="mt-1">
-                                <p className="text-xs text-blue-600">🚔 Police</p>
-                                <ul className="list-disc list-inside text-xs text-gray-600">
+                                <p className="text-xs text-blue-400">🚔 Police</p>
+                                <ul className="list-disc list-inside text-xs text-gray-400">
                                   {nearbyPlaces.police.map((p, i) => (
                                     <li key={i}>{p.name} ({(p.distance/1000).toFixed(1)} km)</li>
                                   ))}
@@ -628,8 +627,8 @@ const Dashboard = () => {
                             )}
                             {nearbyPlaces.fire.length > 0 && (
                               <div className="mt-1">
-                                <p className="text-xs text-orange-600">🔥 Fire Stations</p>
-                                <ul className="list-disc list-inside text-xs text-gray-600">
+                                <p className="text-xs text-orange-400">🔥 Fire Stations</p>
+                                <ul className="list-disc list-inside text-xs text-gray-400">
                                   {nearbyPlaces.fire.map((f, i) => (
                                     <li key={i}>{f.name} ({(f.distance/1000).toFixed(1)} km)</li>
                                   ))}
@@ -640,35 +639,35 @@ const Dashboard = () => {
                         )}
                       </div>
                     ) : (
-                      <p className="text-xs text-gray-400 mt-1">No address info available</p>
+                      <p className="text-xs text-gray-500 mt-1">No address info available</p>
                     )}
                   </div>
-                  <button onClick={() => setSelectedMarker(null)} className="text-gray-400 hover:text-gray-600">✕</button>
+                  <button onClick={() => setSelectedMarker(null)} className="text-gray-400 hover:text-gray-300">✕</button>
                 </div>
               </div>
             )}
-            <div className="mt-2 text-xs text-gray-400 flex justify-between">
+            <div className="mt-2 text-xs text-gray-500 flex justify-between">
               <span>Last updated: {lastUpdated?.toLocaleTimeString() || 'N/A'}</span>
-              <button onClick={() => window.location.reload()} className="text-blue-600 hover:underline">
+              <button onClick={() => window.location.reload()} className="text-blue-400 hover:underline">
                 <MdRefresh className="inline mr-1" /> Refresh
               </button>
             </div>
           </div>
 
           {/* Incidents Panel */}
-          <div className="bg-white rounded-xl p-4 shadow-md border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
+          <div className="bg-gray-800 rounded-xl p-4 shadow-lg border border-gray-700">
+            <h2 className="text-lg font-semibold text-white flex items-center mb-4">
               <IoMdWarning className="text-yellow-500 mr-2" />
               RECENT INCIDENTS
             </h2>
             <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
               {recentIncidents.length === 0 ? (
-                <p className="text-gray-400 text-sm">No recent incidents</p>
+                <p className="text-gray-500 text-sm">No recent incidents</p>
               ) : (
                 recentIncidents.map(incident => (
                   <div
                     key={incident.id}
-                    className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:shadow cursor-pointer transition"
+                    className="p-3 bg-gray-700 rounded-lg border border-gray-600 hover:shadow cursor-pointer transition"
                     onClick={() => {
                       setMapCenter([incident.lat, incident.lng]);
                       setSelectedMarker({ ...incident, type: 'accident' });
@@ -678,14 +677,14 @@ const Dashboard = () => {
                       <div className={`w-2 h-2 rounded-full mt-1.5 ${getSeverityColor(incident.severity)}`}></div>
                       <div className="flex-1">
                         <div className="flex justify-between">
-                          <p className="font-semibold text-sm text-gray-800">{incident.title}</p>
+                          <p className="font-semibold text-sm text-white">{incident.title}</p>
                           <span className="text-xs text-gray-400">{incident.time}</span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">{incident.details}</p>
+                        <p className="text-xs text-gray-400 mt-1">{incident.details}</p>
                         <div className="flex items-center space-x-2 mt-2">
                           {incident.units.includes('Ambulance') && <FaAmbulance className="text-red-400 text-xs" />}
                           {incident.units.includes('Fire Truck') && <GiFireExtinguisher className="text-orange-400 text-xs" />}
-                          <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                          <span className="text-xs px-2 py-0.5 bg-blue-900 text-blue-300 rounded-full">
                             {incident.status}
                           </span>
                         </div>
@@ -695,7 +694,7 @@ const Dashboard = () => {
                 ))
               )}
             </div>
-            <div className="mt-4 pt-3 border-t border-gray-200">
+            <div className="mt-4 pt-3 border-t border-gray-700">
               <button
                 onClick={() => navigate('/accident-reports')}
                 className="w-full bg-gradient-to-r from-blue-600 to-green-600 text-white py-2 rounded-lg text-sm font-semibold hover:shadow-lg transition"
@@ -707,38 +706,40 @@ const Dashboard = () => {
         </div>
 
         {/* Live Vehicle Data Table */}
-        <div className="mt-6 bg-white rounded-xl p-4 shadow-md border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
-            <FaList className="text-blue-600 mr-2" />
+        <div className="mt-6 bg-gray-800 rounded-xl p-4 shadow-lg border border-gray-700">
+          <h2 className="text-lg font-semibold text-white flex items-center mb-4">
+            <FaList className="text-blue-400 mr-2" />
             LIVE VEHICLE DATA
           </h2>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-700">
+              <thead className="bg-gray-900">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Blackbox ID</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Speed (km/h)</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Accel (g)</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tilt (°)</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fire</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Human</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Blackbox ID</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Location</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Speed (km/h)</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Accel (g)</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Tilt (°)</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Fire</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Human</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Timestamp</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-gray-800 divide-y divide-gray-700">
                 {vehicles.length === 0 ? (
-                  <tr><td colSpan="8" className="px-4 py-4 text-center text-gray-400">No vehicle data</td></tr>
+                  <tr>
+                    <td colSpan="8" className="px-4 py-4 text-center text-gray-500">No vehicle data</td>
+                  </tr>
                 ) : (
                   vehicles.map(v => (
-                    <tr key={v.blackbox_id} className={`hover:bg-gray-50 ${v.fire_detected ? 'bg-red-50' : ''}`}>
-                      <td className="px-4 py-2 text-sm font-mono">{v.blackbox_id}</td>
-                      <td className="px-4 py-2 text-sm">{v.latitude.toFixed(4)}, {v.longitude.toFixed(4)}</td>
-                      <td className="px-4 py-2 text-sm">{v.speed_kmph.toFixed(1)}</td>
-                      <td className="px-4 py-2 text-sm">{v.acceleration_g.toFixed(2)}</td>
-                      <td className="px-4 py-2 text-sm">{v.tilt_degree.toFixed(1)}</td>
+                    <tr key={v.blackbox_id} className={`hover:bg-gray-700 ${v.fire_detected ? 'bg-red-900/30' : ''}`}>
+                      <td className="px-4 py-2 text-sm font-mono text-gray-300">{v.blackbox_id}</td>
+                      <td className="px-4 py-2 text-sm text-gray-300">{v.latitude.toFixed(4)}, {v.longitude.toFixed(4)}</td>
+                      <td className="px-4 py-2 text-sm text-gray-300">{v.speed_kmph.toFixed(1)}</td>
+                      <td className="px-4 py-2 text-sm text-gray-300">{v.acceleration_g.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-sm text-gray-300">{v.tilt_degree.toFixed(1)}</td>
                       <td className="px-4 py-2 text-sm">{v.fire_detected ? '🔥 Yes' : 'No'}</td>
-                      <td className="px-4 py-2 text-sm">{v.human_presence ? 'Yes' : 'No'}</td>
+                      <td className="px-4 py-2 text-sm text-gray-300">{v.human_presence ? 'Yes' : 'No'}</td>
                       <td className="px-4 py-2 text-sm text-gray-500">{new Date(v.timestamp).toLocaleTimeString()}</td>
                     </tr>
                   ))
@@ -748,10 +749,13 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Quick Actions */}
+        {/* Quick Actions - Floating Button to Traffic Management */}
         <div className="fixed bottom-6 right-6 z-50">
-          <button className="w-14 h-14 bg-gradient-to-r from-blue-600 to-green-600 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center text-white">
-            <BsLightningChargeFill className="text-2xl" />
+          <button
+            onClick={() => navigate('/traffic-management')}
+            className="w-14 h-14 bg-gradient-to-r from-blue-600 to-green-600 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center text-white transition-transform hover:scale-105"
+          >
+            <FaTrafficLight className="text-2xl" />
           </button>
         </div>
       </main>
