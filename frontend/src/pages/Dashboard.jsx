@@ -344,6 +344,15 @@ const Dashboard = () => {
                 <span className="text-xs text-gray-500 hidden sm:inline">{liveTime.toLocaleTimeString()}</span>
               </div>
 
+              {/* Traffic Management button */}
+              <button
+                onClick={() => navigate('/traffic-management')}
+                className="p-2 hover:bg-gray-100 rounded-full"
+                title="Traffic Management"
+              >
+                <FaTrafficLight className="text-xl text-gray-600" />
+              </button>
+
               {/* Notifications */}
               <div className="relative">
                 <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 hover:bg-gray-100 rounded-full">
@@ -462,7 +471,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-green-600 text-sm flex items-center"><FaTachometerAlt className="mr-1" /> ACTIVE VEHICLES</p>
                 <p className="text-3xl font-bold text-gray-800 mt-2">{animatedStats.activeVehicles}</p>
-                <p className="text-xs text-green-600 mt-2">Speed > 0 km/h</p>
+                <p className="text-xs text-green-600 mt-2">Speed &gt; 0 km/h</p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                 <FaTachometerAlt className="text-xl text-green-600" />
