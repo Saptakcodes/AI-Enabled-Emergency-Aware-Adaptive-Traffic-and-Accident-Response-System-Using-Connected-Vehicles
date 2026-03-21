@@ -133,26 +133,62 @@ const TrafficManagement = () => {
     }
   };
 
-  // Simulation: generate fake vehicles and update periodically
+  // Simulation: generate 40 demo vehicles and update periodically
   const startSimulation = () => {
     if (simulationInterval.current) clearInterval(simulationInterval.current);
-    // Seed some fake vehicles
-    const fakeVehicles = [
-      { blackbox_id: 'SIM_AMB_001', latitude: 22.6925, longitude: 88.4715, speed_kmph: 40, acceleration_g: 0.9, tilt_degree: 0, fire_detected: false, human_presence: false, breathing_detected: false, timestamp: new Date().toISOString() },
-      { blackbox_id: 'SIM_CAR_001', latitude: 22.6915, longitude: 88.4710, speed_kmph: 30, acceleration_g: 0.8, tilt_degree: 0, fire_detected: false, human_presence: false, breathing_detected: false, timestamp: new Date().toISOString() },
-      { blackbox_id: 'SIM_CAR_002', latitude: 22.6930, longitude: 88.4720, speed_kmph: 20, acceleration_g: 0.7, tilt_degree: 0, fire_detected: false, human_presence: false, breathing_detected: false, timestamp: new Date().toISOString() }
-    ];
-    setVehicles(fakeVehicles);
-    // Update positions every 2 seconds
-    simulationInterval.current = setInterval(() => {
-      setVehicles(prev => prev.map(v => ({
-        ...v,
-        latitude: v.latitude + (Math.random() - 0.5) * 0.0005,
-        longitude: v.longitude + (Math.random() - 0.5) * 0.0005,
-        speed_kmph: Math.max(0, v.speed_kmph + (Math.random() - 0.5) * 5),
+
+    // Center of the map area (Kolkata region)
+    const centerLat = 22.5726;
+    const centerLon = 88.3639;
+    const radius = 0.05; // about 5.5 km radius
+
+    // Generate 40 demo vehicles with random positions and speeds
+    const demoVehicles = [];
+    for (let i = 1; i <= 40; i++) {
+      const lat = centerLat + (Math.random() - 0.5) * radius * 2;
+      const lon = centerLon + (Math.random() - 0.5) * radius * 2;
+      const speed = Math.random() * 80;
+      const accel = 0.5 + Math.random() * 1.5;
+      const tilt = Math.random() * 20;
+      // 10% chance of being an emergency vehicle
+      let blackboxId = `DEMO_CAR_${i}`;
+      if (Math.random() < 0.1) {
+        const types = ['AMB', 'POL', 'FIR'];
+        blackboxId = `DEMO_${types[Math.floor(Math.random() * types.length)]}_${i}`;
+      }
+      demoVehicles.push({
+        blackbox_id: blackboxId,
+        latitude: lat,
+        longitude: lon,
+        speed_kmph: speed,
+        acceleration_g: accel,
+        tilt_degree: tilt,
+        fire_detected: false,
+        human_presence: false,
+        breathing_detected: false,
         timestamp: new Date().toISOString()
-      })));
-    }, 2000);
+      });
+    }
+
+    setVehicles(demoVehicles);
+    // Update positions every 1 second for smoother movement
+    simulationInterval.current = setInterval(() => {
+      setVehicles(prev => prev.map(v => {
+        let newLat = v.latitude + (Math.random() - 0.5) * 0.0005;
+        let newLon = v.longitude + (Math.random() - 0.5) * 0.0005;
+        // Clamp to keep within the bounding box
+        newLat = Math.min(centerLat + radius, Math.max(centerLat - radius, newLat));
+        newLon = Math.min(centerLon + radius, Math.max(centerLon - radius, newLon));
+        const newSpeed = Math.max(0, v.speed_kmph + (Math.random() - 0.5) * 5);
+        return {
+          ...v,
+          latitude: newLat,
+          longitude: newLon,
+          speed_kmph: newSpeed,
+          timestamp: new Date().toISOString()
+        };
+      }));
+    }, 1000);
   };
 
   const stopSimulation = () => {
@@ -385,7 +421,9 @@ const TrafficManagement = () => {
               <div className="bg-gray-700 rounded p-3 text-center">
                 <FaCar className="text-blue-400 text-xl mx-auto mb-1" />
                 <p className="text-2xl font-bold text-white">{vehicles.length}</p>
-                <p className="text-xs text-gray-400">Active Vehicles</p>
+                <p className="text-xs text-gray-400">
+                  {simulationMode ? "Demo Vehicles" : "Active Vehicles"}
+                </p>
               </div>
               <div className="bg-gray-700 rounded p-3 text-center">
                 <FaTrafficLight className="text-yellow-400 text-xl mx-auto mb-1" />
