@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
-import LiveMap from './components/LiveMap';
+import LiveMap from '../components/LiveMap';
 import { 
   FaArrowLeft, FaList, FaBolt, FaCar, FaTrafficLight, FaChartLine,
   FaPlay, FaPause, FaStop, FaExchangeAlt
