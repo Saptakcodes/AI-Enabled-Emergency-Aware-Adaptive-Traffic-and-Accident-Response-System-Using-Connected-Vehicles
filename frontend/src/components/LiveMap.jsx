@@ -1,8 +1,9 @@
 // src/components/LiveMap.jsx
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.heat'; // For heatmap
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -53,36 +54,74 @@ function ChangeView({ center }) {
   return null;
 }
 
-// Vehicle Marker
-const VehicleMarker = React.memo(({ vehicle, onClick }) => (
-  <Marker
-    position={[vehicle.latitude, vehicle.longitude]}
-    icon={vehicleIcon}
-    eventHandlers={{ click: () => onClick(vehicle, 'vehicle') }}
-  >
-    <Popup>
-      <div className="p-2 min-w-[200px]">
-        <h3 className="font-semibold text-blue-600 mb-1">🚗 Vehicle {vehicle.blackbox_id}</h3>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div><span className="text-gray-500">Speed:</span> {vehicle.speed_kmph} km/h</div>
-          <div><span className="text-gray-500">Accel:</span> {vehicle.acceleration_g} g</div>
-          <div><span className="text-gray-500">Tilt:</span> {vehicle.tilt_degree}°</div>
-          <div><span className="text-gray-500">Fire:</span> {vehicle.fire_detected ? '🔥 Yes' : 'No'}</div>
-        </div>
-        <a
-          href={`https://www.google.com/maps?q=${vehicle.latitude},${vehicle.longitude}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-500 hover:underline text-xs mt-2 inline-block"
-        >
-          Open in Google Maps
-        </a>
-      </div>
-    </Popup>
-  </Marker>
-));
+// Vehicle Marker with smooth movement (optional)
+const VehicleMarker = React.memo(({ vehicle, onClick }) => {
+  const markerRef = useRef();
+  const prevPos = useRef([vehicle.latitude, vehicle.longitude]);
 
-// Accident Marker
+  // Animate marker movement smoothly over time (simple lerp)
+  useEffect(() => {
+    if (!markerRef.current) return;
+    const newPos = [vehicle.latitude, vehicle.longitude];
+    // Only animate if moved more than a threshold
+    if (Math.hypot(newPos[0] - prevPos.current[0], newPos[1] - prevPos.current[1]) > 0.0001) {
+      // Start animation
+      const startPos = prevPos.current;
+      const endPos = newPos;
+      const startTime = performance.now();
+      const duration = 500; // ms
+
+      const animate = (now) => {
+        const elapsed = now - startTime;
+        const t = Math.min(1, elapsed / duration);
+        const lat = startPos[0] + (endPos[0] - startPos[0]) * t;
+        const lng = startPos[1] + (endPos[1] - startPos[1]) * t;
+        markerRef.current.setLatLng([lat, lng]);
+        if (t < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          prevPos.current = endPos;
+        }
+      };
+      requestAnimationFrame(animate);
+    } else {
+      // Just update without animation
+      markerRef.current.setLatLng(newPos);
+      prevPos.current = newPos;
+    }
+  }, [vehicle.latitude, vehicle.longitude]);
+
+  return (
+    <Marker
+      ref={markerRef}
+      position={[vehicle.latitude, vehicle.longitude]}
+      icon={vehicleIcon}
+      eventHandlers={{ click: () => onClick(vehicle, 'vehicle') }}
+    >
+      <Popup>
+        <div className="p-2 min-w-[200px]">
+          <h3 className="font-semibold text-blue-600 mb-1">🚗 Vehicle {vehicle.blackbox_id}</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div><span className="text-gray-500">Speed:</span> {vehicle.speed_kmph} km/h</div>
+            <div><span className="text-gray-500">Accel:</span> {vehicle.acceleration_g} g</div>
+            <div><span className="text-gray-500">Tilt:</span> {vehicle.tilt_degree}°</div>
+            <div><span className="text-gray-500">Fire:</span> {vehicle.fire_detected ? '🔥 Yes' : 'No'}</div>
+          </div>
+          <a
+            href={`https://www.google.com/maps?q=${vehicle.latitude},${vehicle.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:underline text-xs mt-2 inline-block"
+          >
+            Open in Google Maps
+          </a>
+        </div>
+      </Popup>
+    </Marker>
+  );
+});
+
+// Accident Marker (static)
 const AccidentMarker = React.memo(({ accident, onClick }) => (
   <Marker
     position={[accident.latitude, accident.longitude]}
@@ -112,36 +151,96 @@ const AccidentMarker = React.memo(({ accident, onClick }) => (
   </Marker>
 ));
 
-// Signal Marker with colored circle
+// Enhanced Signal Marker with countdown and queue bars
 const getSignalIcon = (state) => {
   const colors = { red: '#ef4444', yellow: '#f59e0b', green: '#10b981' };
   return L.divIcon({
     className: 'signal-marker',
-    html: `<div style="background-color: ${colors[state]}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10]
+    html: `<div style="background-color: ${colors[state]}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
   });
 };
 
-const SignalMarker = React.memo(({ signal, onClick }) => (
-  <Marker
-    position={[signal.location.coordinates[1], signal.location.coordinates[0]]}
-    icon={getSignalIcon(signal.current_state)}
-    eventHandlers={{ click: () => onClick(signal, 'signal') }}
-  >
-    <Popup>
-      <div className="p-2">
-        <h4 className="font-semibold">🚦 Traffic Light</h4>
-        <p className="text-sm text-gray-600">{signal.location_name || signal.signal_id}</p>
-        <p>State: <span className={`font-bold text-${signal.current_state}-600`}>{signal.current_state.toUpperCase()}</span></p>
-        {signal.override_active && <p className="text-orange-500">🔧 Overridden</p>}
-        {signal.preempted_by && <p className="text-red-500">🚑 Emergency preemption</p>}
-      </div>
-    </Popup>
-  </Marker>
-));
+const SignalMarker = React.memo(({ signal, onClick, remainingTime, queueLengths }) => {
+  // remainingTime in seconds (optional)
+  const countdownText = remainingTime !== undefined && remainingTime > 0
+    ? `${Math.ceil(remainingTime)}s`
+    : '';
+  return (
+    <Marker
+      position={[signal.location.coordinates[1], signal.location.coordinates[0]]}
+      icon={getSignalIcon(signal.current_state)}
+      eventHandlers={{ click: () => onClick(signal, 'signal') }}
+    >
+      <Popup>
+        <div className="p-2 min-w-[240px]">
+          <h4 className="font-semibold">🚦 Traffic Light</h4>
+          <p className="text-sm text-gray-600">{signal.location_name || signal.signal_id}</p>
+          <div className="flex items-center justify-between mt-1">
+            <span>State: <span className={`font-bold text-${signal.current_state}-600`}>{signal.current_state.toUpperCase()}</span></span>
+            {countdownText && <span className="text-xs bg-gray-200 px-2 py-0.5 rounded">⏱️ {countdownText}</span>}
+          </div>
+          {signal.override_active && <p className="text-orange-500 text-xs mt-1">🔧 Overridden</p>}
+          {signal.preempted_by && <p className="text-red-500 text-xs mt-1">🚑 Emergency preemption</p>}
+          {/* Queue bars */}
+          {queueLengths && (
+            <div className="mt-2">
+              <p className="text-xs font-semibold mb-1">Queue lengths (estimated):</p>
+              <div className="space-y-1">
+                {Object.entries(queueLengths).map(([dir, len]) => (
+                  <div key={dir} className="flex items-center text-xs">
+                    <span className="w-8 text-gray-500">{dir}:</span>
+                    <div className="flex-1 bg-gray-200 rounded-full h-1.5 ml-2">
+                      <div
+                        className="bg-blue-500 h-1.5 rounded-full"
+                        style={{ width: `${Math.min(100, len * 5)}%` }}
+                      />
+                    </div>
+                    <span className="ml-2 text-gray-500">{len}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </Popup>
+    </Marker>
+  );
+});
 
-// Google Maps iframe view
+// Heatmap Layer Component
+const HeatmapLayer = ({ points }) => {
+  const map = useMap();
+  const layerRef = useRef(null);
+
+  useEffect(() => {
+    if (!map) return;
+    if (layerRef.current) {
+      map.removeLayer(layerRef.current);
+    }
+    if (points && points.length > 0) {
+      // Leaflet.heat expects lat, lng, intensity (optional)
+      const heatPoints = points.map(p => [p.lat, p.lng, p.intensity || 1.0]);
+      layerRef.current = L.heatLayer(heatPoints, {
+        radius: 25,
+        blur: 15,
+        maxZoom: 17,
+        minOpacity: 0.3
+      });
+      layerRef.current.addTo(map);
+    }
+    return () => {
+      if (layerRef.current) {
+        map.removeLayer(layerRef.current);
+      }
+    };
+  }, [map, points]);
+
+  return null;
+};
+
+// Google Maps iframe view (unchanged)
 const GoogleMapsView = React.memo(({ center, zoom }) => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const prevCenterRef = useRef(center);
@@ -171,13 +270,25 @@ const GoogleMapsView = React.memo(({ center, zoom }) => {
   );
 });
 
-const LiveMap = ({ vehicles = [], accidents = [], signals = [], center = [22.5726, 88.3639], zoom = 14, onMarkerClick, mapType = 'interactive' }) => {
+const LiveMap = ({
+  vehicles = [],
+  accidents = [],
+  signals = [],
+  center = [22.5726, 88.3639],
+  zoom = 14,
+  onMarkerClick,
+  mapType = 'interactive',
+  heatmapPoints = [],           // array of {lat, lng, intensity}
+  signalRemainingTime = {},     // map signal_id -> remaining seconds
+  signalQueues = {}              // map signal_id -> {N: count, S: count, E: count, W: count}
+}) => {
   if (mapType === 'simple') {
     return <GoogleMapsView center={center} zoom={zoom} />;
   }
 
-  const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-  const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; CartoDB';
+  // Use a more realistic tile layer (CartoDB Voyager)
+  const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+  const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CartoDB';
 
   return (
     <div className="relative h-full w-full">
@@ -190,6 +301,7 @@ const LiveMap = ({ vehicles = [], accidents = [], signals = [], center = [22.572
       >
         <ChangeView center={center} />
         <TileLayer url={tileLayerUrl} attribution={attribution} />
+        <HeatmapLayer points={heatmapPoints} />
         {vehicles.map(vehicle => (
           <VehicleMarker key={vehicle.blackbox_id} vehicle={vehicle} onClick={onMarkerClick} />
         ))}
@@ -197,10 +309,17 @@ const LiveMap = ({ vehicles = [], accidents = [], signals = [], center = [22.572
           <AccidentMarker key={accident._id} accident={accident} onClick={onMarkerClick} />
         ))}
         {signals.map(signal => (
-          <SignalMarker key={signal.signal_id} signal={signal} onClick={onMarkerClick} />
+          <SignalMarker
+            key={signal.signal_id}
+            signal={signal}
+            onClick={onMarkerClick}
+            remainingTime={signalRemainingTime[signal.signal_id]}
+            queueLengths={signalQueues[signal.signal_id]}
+          />
         ))}
       </MapContainer>
 
+      {/* Open in Google Maps button */}
       <a
         href={`https://www.google.com/maps?q=${center[0]},${center[1]}`}
         target="_blank"
