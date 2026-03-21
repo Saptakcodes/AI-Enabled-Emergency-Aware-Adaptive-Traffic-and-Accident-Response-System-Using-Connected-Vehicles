@@ -134,32 +134,48 @@ const TrafficManagement = () => {
   };
 
   // Simulation: generate 40 demo vehicles and update periodically
-  const startSimulation = () => {
-    if (simulationInterval.current) clearInterval(simulationInterval.current);
+  // Simulation: generate 40 fake vehicles distributed around the real traffic signals
+const startSimulation = () => {
+  if (simulationInterval.current) clearInterval(simulationInterval.current);
 
-    // Center of the map area (Kolkata region)
-    const centerLat = 22.5726;
-    const centerLon = 88.3639;
-    const radius = 0.05; // about 5.5 km radius
+  // Use the actual signal coordinates from the database
+  // (We need to extract them from the `signals` state; if not available, fall back to defaults)
+  const signalPoints = signals.length > 0 ? signals : [
+    { signal_id: 'device_test_1', location: { coordinates: [88.471687, 22.693016] } },
+    { signal_id: 'intersection_2', location: { coordinates: [88.473200, 22.694500] } },
+    { signal_id: 'intersection_3', location: { coordinates: [88.470100, 22.691800] } }
+  ];
 
-    // Generate 40 demo vehicles with random positions and speeds
-    const demoVehicles = [];
-    for (let i = 1; i <= 40; i++) {
-      const lat = centerLat + (Math.random() - 0.5) * radius * 2;
-      const lon = centerLon + (Math.random() - 0.5) * radius * 2;
-      const speed = Math.random() * 80;
+  // For each signal, generate a few vehicles around it
+  const vehiclesPerSignal = Math.ceil(40 / signalPoints.length);
+  const demoVehicles = [];
+
+  for (let sig of signalPoints) {
+    const [lon, lat] = sig.location.coordinates;
+    const radius = 0.003; // about 300 metres
+
+    for (let i = 0; i < vehiclesPerSignal && demoVehicles.length < 40; i++) {
+      // Random position within radius
+      const latOffset = (Math.random() - 0.5) * radius * 2;
+      const lonOffset = (Math.random() - 0.5) * radius * 2;
+      const vehicleLat = lat + latOffset;
+      const vehicleLon = lon + lonOffset;
+
+      const speed = Math.random() * 60;
       const accel = 0.5 + Math.random() * 1.5;
       const tilt = Math.random() * 20;
+
       // 10% chance of being an emergency vehicle
-      let blackboxId = `DEMO_CAR_${i}`;
+      let blackboxId = `DEMO_CAR_${demoVehicles.length + 1}`;
       if (Math.random() < 0.1) {
         const types = ['AMB', 'POL', 'FIR'];
-        blackboxId = `DEMO_${types[Math.floor(Math.random() * types.length)]}_${i}`;
+        blackboxId = `DEMO_${types[Math.floor(Math.random() * types.length)]}_${demoVehicles.length + 1}`;
       }
+
       demoVehicles.push({
         blackbox_id: blackboxId,
-        latitude: lat,
-        longitude: lon,
+        latitude: vehicleLat,
+        longitude: vehicleLon,
         speed_kmph: speed,
         acceleration_g: accel,
         tilt_degree: tilt,
@@ -169,27 +185,67 @@ const TrafficManagement = () => {
         timestamp: new Date().toISOString()
       });
     }
+  }
 
-    setVehicles(demoVehicles);
-    // Update positions every 1 second for smoother movement
-    simulationInterval.current = setInterval(() => {
-      setVehicles(prev => prev.map(v => {
-        let newLat = v.latitude + (Math.random() - 0.5) * 0.0005;
-        let newLon = v.longitude + (Math.random() - 0.5) * 0.0005;
-        // Clamp to keep within the bounding box
-        newLat = Math.min(centerLat + radius, Math.max(centerLat - radius, newLat));
-        newLon = Math.min(centerLon + radius, Math.max(centerLon - radius, newLon));
-        const newSpeed = Math.max(0, v.speed_kmph + (Math.random() - 0.5) * 5);
-        return {
-          ...v,
-          latitude: newLat,
-          longitude: newLon,
-          speed_kmph: newSpeed,
-          timestamp: new Date().toISOString()
-        };
-      }));
-    }, 1000);
-  };
+  // Fill up to exactly 40 if we didn't reach
+  while (demoVehicles.length < 40) {
+    // Fallback: random around first signal
+    const [lon, lat] = signalPoints[0].location.coordinates;
+    const latOffset = (Math.random() - 0.5) * 0.006;
+    const lonOffset = (Math.random() - 0.5) * 0.006;
+    demoVehicles.push({
+      blackbox_id: `DEMO_CAR_${demoVehicles.length + 1}`,
+      latitude: lat + latOffset,
+      longitude: lon + lonOffset,
+      speed_kmph: Math.random() * 60,
+      acceleration_g: 0.5 + Math.random() * 1.5,
+      tilt_degree: Math.random() * 20,
+      fire_detected: false,
+      human_presence: false,
+      breathing_detected: false,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  setVehicles(demoVehicles);
+
+  // Update positions every 1 second, keeping them near the signals
+  simulationInterval.current = setInterval(() => {
+    setVehicles(prev => prev.map(v => {
+      // For each vehicle, find the closest signal (or just use the first one for simplicity)
+      // We'll apply a small random walk, but also gently pull back towards the original signal area.
+      const closestSignal = signalPoints.reduce((closest, sig) => {
+        const [lon, lat] = sig.location.coordinates;
+        const dist = haversine(v.latitude, v.longitude, lat, lon);
+        if (dist < closest.dist) return { sig, dist };
+        return closest;
+      }, { sig: signalPoints[0], dist: Infinity }).sig;
+
+      const [targetLon, targetLat] = closestSignal.location.coordinates;
+      // Random walk
+      let newLat = v.latitude + (Math.random() - 0.5) * 0.0005;
+      let newLon = v.longitude + (Math.random() - 0.5) * 0.0005;
+      // Pull back towards target if too far (soft boundary)
+      const maxRadius = 0.004; // ~400 metres
+      const dx = newLat - targetLat;
+      const dy = newLon - targetLon;
+      const dist = Math.hypot(dx, dy);
+      if (dist > maxRadius) {
+        const pull = 0.02; // gentle pull factor
+        newLat = targetLat + dx * (1 - pull);
+        newLon = targetLon + dy * (1 - pull);
+      }
+      const newSpeed = Math.max(0, v.speed_kmph + (Math.random() - 0.5) * 5);
+      return {
+        ...v,
+        latitude: newLat,
+        longitude: newLon,
+        speed_kmph: newSpeed,
+        timestamp: new Date().toISOString()
+      };
+    }));
+  }, 1000);
+};
 
   const stopSimulation = () => {
     if (simulationInterval.current) {
