@@ -135,105 +135,113 @@ const TrafficManagement = () => {
 
   // Simulation: generate 40 demo vehicles and update periodically
   // Simulation: generate 40 fake vehicles distributed around the real traffic signals
+// Simulation: generate 40 fake vehicles placed around the real traffic signals (static array)
 const startSimulation = () => {
   if (simulationInterval.current) clearInterval(simulationInterval.current);
 
-  // Use the actual signal coordinates from the database
-  // (We need to extract them from the `signals` state; if not available, fall back to defaults)
-  const signalPoints = signals.length > 0 ? signals : [
-    { signal_id: 'device_test_1', location: { coordinates: [88.471687, 22.693016] } },
-    { signal_id: 'intersection_2', location: { coordinates: [88.473200, 22.694500] } },
-    { signal_id: 'intersection_3', location: { coordinates: [88.470100, 22.691800] } }
+  // Hardcoded signal coordinates (from your database)
+  const signalsLocations = [
+    { id: 'device_test_1', lat: 22.693016, lon: 88.471687 },   // Device Test Location
+    { id: 'intersection_2', lat: 22.694500, lon: 88.473200 },   // Baguiati More
+    { id: 'intersection_3', lat: 22.691800, lon: 88.470100 }    // Ultadanga Crossing
   ];
 
-  // For each signal, generate a few vehicles around it
-  const vehiclesPerSignal = Math.ceil(40 / signalPoints.length);
+  // Generate vehicles manually around each signal
   const demoVehicles = [];
 
-  for (let sig of signalPoints) {
-    const [lon, lat] = sig.location.coordinates;
-    const radius = 0.003; // about 300 metres
-
-    for (let i = 0; i < vehiclesPerSignal && demoVehicles.length < 40; i++) {
-      // Random position within radius
-      const latOffset = (Math.random() - 0.5) * radius * 2;
-      const lonOffset = (Math.random() - 0.5) * radius * 2;
-      const vehicleLat = lat + latOffset;
-      const vehicleLon = lon + lonOffset;
-
-      const speed = Math.random() * 60;
-      const accel = 0.5 + Math.random() * 1.5;
-      const tilt = Math.random() * 20;
-
-      // 10% chance of being an emergency vehicle
-      let blackboxId = `DEMO_CAR_${demoVehicles.length + 1}`;
-      if (Math.random() < 0.1) {
-        const types = ['AMB', 'POL', 'FIR'];
-        blackboxId = `DEMO_${types[Math.floor(Math.random() * types.length)]}_${demoVehicles.length + 1}`;
-      }
-
-      demoVehicles.push({
-        blackbox_id: blackboxId,
-        latitude: vehicleLat,
-        longitude: vehicleLon,
-        speed_kmph: speed,
-        acceleration_g: accel,
-        tilt_degree: tilt,
-        fire_detected: false,
-        human_presence: false,
-        breathing_detected: false,
-        timestamp: new Date().toISOString()
-      });
+  // Helper to add a vehicle around a specific signal
+  const addVehicle = (id, lat, lon, speed, accel, tilt, isEmergency = false) => {
+    let blackboxId = `DEMO_CAR_${id}`;
+    if (isEmergency) {
+      const types = ['AMB', 'POL', 'FIR'];
+      blackboxId = `DEMO_${types[Math.floor(Math.random() * types.length)]}_${id}`;
     }
-  }
-
-  // Fill up to exactly 40 if we didn't reach
-  while (demoVehicles.length < 40) {
-    // Fallback: random around first signal
-    const [lon, lat] = signalPoints[0].location.coordinates;
-    const latOffset = (Math.random() - 0.5) * 0.006;
-    const lonOffset = (Math.random() - 0.5) * 0.006;
     demoVehicles.push({
-      blackbox_id: `DEMO_CAR_${demoVehicles.length + 1}`,
-      latitude: lat + latOffset,
-      longitude: lon + lonOffset,
-      speed_kmph: Math.random() * 60,
-      acceleration_g: 0.5 + Math.random() * 1.5,
-      tilt_degree: Math.random() * 20,
+      blackbox_id: blackboxId,
+      latitude: lat,
+      longitude: lon,
+      speed_kmph: speed,
+      acceleration_g: accel,
+      tilt_degree: tilt,
       fire_detected: false,
       human_presence: false,
       breathing_detected: false,
       timestamp: new Date().toISOString()
     });
-  }
+  };
+
+  // For each signal, add 13-14 vehicles around it (total 40)
+  // Signal 1: Device Test Location (center: 22.693016, 88.471687)
+  addVehicle(1, 22.693016 + 0.0002, 88.471687 - 0.0001, 25, 0.9, 3, false);
+  addVehicle(2, 22.693016 - 0.0003, 88.471687 + 0.0002, 32, 1.1, 5, false);
+  addVehicle(3, 22.693016 + 0.0001, 88.471687 + 0.0003, 18, 0.7, 2, false);
+  addVehicle(4, 22.693016 + 0.0004, 88.471687 - 0.0002, 42, 1.3, 8, true);
+  addVehicle(5, 22.693016 - 0.0002, 88.471687 - 0.0003, 28, 0.8, 4, false);
+  addVehicle(6, 22.693016 + 0.0005, 88.471687 + 0.0001, 15, 0.6, 1, false);
+  addVehicle(7, 22.693016 - 0.0001, 88.471687 + 0.0004, 55, 1.5, 12, true);
+  addVehicle(8, 22.693016 + 0.0003, 88.471687 - 0.0004, 38, 1.2, 7, false);
+  addVehicle(9, 22.693016 - 0.0004, 88.471687 + 0.0005, 22, 0.9, 6, false);
+  addVehicle(10, 22.693016 + 0.0006, 88.471687 - 0.0005, 45, 1.4, 9, false);
+  addVehicle(11, 22.693016 - 0.0005, 88.471687 - 0.0006, 12, 0.5, 0, false);
+  addVehicle(12, 22.693016 + 0.0007, 88.471687 + 0.0006, 60, 1.6, 14, true);
+  addVehicle(13, 22.693016 - 0.0006, 88.471687 + 0.0007, 35, 1.0, 10, false);
+
+  // Signal 2: Baguiati More (center: 22.694500, 88.473200)
+  addVehicle(14, 22.694500 + 0.0002, 88.473200 - 0.0001, 28, 0.9, 4, false);
+  addVehicle(15, 22.694500 - 0.0003, 88.473200 + 0.0002, 31, 1.0, 6, false);
+  addVehicle(16, 22.694500 + 0.0001, 88.473200 + 0.0003, 19, 0.7, 2, false);
+  addVehicle(17, 22.694500 + 0.0004, 88.473200 - 0.0002, 44, 1.3, 8, true);
+  addVehicle(18, 22.694500 - 0.0002, 88.473200 - 0.0003, 27, 0.8, 3, false);
+  addVehicle(19, 22.694500 + 0.0005, 88.473200 + 0.0001, 16, 0.6, 1, false);
+  addVehicle(20, 22.694500 - 0.0001, 88.473200 + 0.0004, 53, 1.5, 11, true);
+  addVehicle(21, 22.694500 + 0.0003, 88.473200 - 0.0004, 36, 1.1, 7, false);
+  addVehicle(22, 22.694500 - 0.0004, 88.473200 + 0.0005, 23, 0.8, 5, false);
+  addVehicle(23, 22.694500 + 0.0006, 88.473200 - 0.0005, 47, 1.4, 10, false);
+  addVehicle(24, 22.694500 - 0.0005, 88.473200 - 0.0006, 14, 0.5, 0, false);
+  addVehicle(25, 22.694500 + 0.0007, 88.473200 + 0.0006, 58, 1.6, 13, true);
+  addVehicle(26, 22.694500 - 0.0006, 88.473200 + 0.0007, 33, 1.0, 9, false);
+
+  // Signal 3: Ultadanga Crossing (center: 22.691800, 88.470100)
+  addVehicle(27, 22.691800 + 0.0002, 88.470100 - 0.0001, 29, 0.9, 4, false);
+  addVehicle(28, 22.691800 - 0.0003, 88.470100 + 0.0002, 34, 1.1, 7, false);
+  addVehicle(29, 22.691800 + 0.0001, 88.470100 + 0.0003, 20, 0.7, 2, false);
+  addVehicle(30, 22.691800 + 0.0004, 88.470100 - 0.0002, 46, 1.3, 9, true);
+  addVehicle(31, 22.691800 - 0.0002, 88.470100 - 0.0003, 26, 0.8, 3, false);
+  addVehicle(32, 22.691800 + 0.0005, 88.470100 + 0.0001, 17, 0.6, 1, false);
+  addVehicle(33, 22.691800 - 0.0001, 88.470100 + 0.0004, 52, 1.5, 12, true);
+  addVehicle(34, 22.691800 + 0.0003, 88.470100 - 0.0004, 37, 1.2, 8, false);
+  addVehicle(35, 22.691800 - 0.0004, 88.470100 + 0.0005, 24, 0.9, 6, false);
+  addVehicle(36, 22.691800 + 0.0006, 88.470100 - 0.0005, 48, 1.4, 11, false);
+  addVehicle(37, 22.691800 - 0.0005, 88.470100 - 0.0006, 13, 0.5, 0, false);
+  addVehicle(38, 22.691800 + 0.0007, 88.470100 + 0.0006, 57, 1.6, 14, true);
+  addVehicle(39, 22.691800 - 0.0006, 88.470100 + 0.0007, 31, 1.0, 8, false);
+  addVehicle(40, 22.691800 + 0.0008, 88.470100 - 0.0007, 40, 1.2, 10, false);
 
   setVehicles(demoVehicles);
 
   // Update positions every 1 second, keeping them near the signals
   simulationInterval.current = setInterval(() => {
     setVehicles(prev => prev.map(v => {
-      // For each vehicle, find the closest signal (or just use the first one for simplicity)
-      // We'll apply a small random walk, but also gently pull back towards the original signal area.
-      const closestSignal = signalPoints.reduce((closest, sig) => {
-        const [lon, lat] = sig.location.coordinates;
-        const dist = haversine(v.latitude, v.longitude, lat, lon);
-        if (dist < closest.dist) return { sig, dist };
-        return closest;
-      }, { sig: signalPoints[0], dist: Infinity }).sig;
-
-      const [targetLon, targetLat] = closestSignal.location.coordinates;
+      // For each vehicle, find its original signal (based on ID range) or just use first signal
+      let targetLat, targetLon;
+      const idNum = parseInt(v.blackbox_id.split('_').pop());
+      if (idNum <= 13) {
+        targetLat = 22.693016; targetLon = 88.471687;
+      } else if (idNum <= 26) {
+        targetLat = 22.694500; targetLon = 88.473200;
+      } else {
+        targetLat = 22.691800; targetLon = 88.470100;
+      }
       // Random walk
       let newLat = v.latitude + (Math.random() - 0.5) * 0.0005;
       let newLon = v.longitude + (Math.random() - 0.5) * 0.0005;
-      // Pull back towards target if too far (soft boundary)
-      const maxRadius = 0.004; // ~400 metres
+      // Keep within ~300m of target
+      const maxRadius = 0.003;
       const dx = newLat - targetLat;
       const dy = newLon - targetLon;
-      const dist = Math.hypot(dx, dy);
-      if (dist > maxRadius) {
-        const pull = 0.02; // gentle pull factor
-        newLat = targetLat + dx * (1 - pull);
-        newLon = targetLon + dy * (1 - pull);
+      if (Math.hypot(dx, dy) > maxRadius) {
+        newLat = targetLat + dx * 0.9;
+        newLon = targetLon + dy * 0.9;
       }
       const newSpeed = Math.max(0, v.speed_kmph + (Math.random() - 0.5) * 5);
       return {
