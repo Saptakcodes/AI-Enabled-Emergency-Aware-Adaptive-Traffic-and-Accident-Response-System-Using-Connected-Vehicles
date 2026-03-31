@@ -51,3 +51,5 @@ cffi==2.0.0
 pycparser==3.0
 
 aiohttp
+
+twilio>=9.0.0

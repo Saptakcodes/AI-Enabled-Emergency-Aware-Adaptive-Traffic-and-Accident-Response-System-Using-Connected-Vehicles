@@ -7,7 +7,7 @@ from database import (
     accident_collection,
     devices_collection,
     post_accident_collection,
-    traffic_signals_collection,               # ← NEW
+    traffic_signals_collection,
 )
 from models import (
     SensorData,
@@ -16,12 +16,16 @@ from models import (
 )
 from datetime import datetime, timedelta
 import asyncio
-import math                                   # ← NEW
+import math
 
 from geocoding import router as geocoding_router
 from devices import router as devices_router
-from signals import router as signals_router  # ← NEW
+from signals import router as signals_router
 import os
+
+# ----- NEW IMPORT FOR EMERGENCY CALL -----
+from utils.notifications import make_emergency_call
+# -----------------------------------------
 
 app = FastAPI()
 
@@ -44,7 +48,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(geocoding_router)
 app.include_router(devices_router)
-app.include_router(signals_router)            # ← NEW
+app.include_router(signals_router)
 
 # Conditionally include development routes
 if os.getenv("ENV") == "development":
@@ -92,7 +96,7 @@ async def receive_sensor_data(data: SensorData):
 
 
 # =========================
-# RECORD ACCIDENT
+# RECORD ACCIDENT (with emergency call)
 # =========================
 @app.post("/accident")
 async def record_accident(data: AccidentRecord):
@@ -104,10 +108,17 @@ async def record_accident(data: AccidentRecord):
 
     result = await accident_collection.insert_one(accident_dict)
 
+    # --- Asynchronously place emergency call ---
+    asyncio.create_task(background_call(accident_dict))
+
     return {
         "message": "Accident recorded",
         "id": str(result.inserted_id)
     }
+
+async def background_call(accident_data):
+    """Run the synchronous Twilio call in a separate thread."""
+    await asyncio.to_thread(make_emergency_call, accident_data)
 
 
 # =========================
