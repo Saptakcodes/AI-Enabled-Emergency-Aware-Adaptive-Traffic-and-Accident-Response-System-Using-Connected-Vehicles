@@ -1,8 +1,6 @@
+# 🚨 AI-Enabled Emergency-Aware Adaptive Traffic Control and Accident Response System Using Connected Vehicles
 
-
-# 🚨 AI Enabled Emergency-Aware Adaptive Traffic Control & Accident Response System Using Connected Vehicles
-
-
+### *(Alert-Blackbox for Accident Response + Smart Traffic Ecosystem)*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Deployment](https://img.shields.io/badge/deployed%20on-Vercel%20%7C%20Render-blue)](https://ai-enabled-emergency-aware-adaptive.vercel.app)
