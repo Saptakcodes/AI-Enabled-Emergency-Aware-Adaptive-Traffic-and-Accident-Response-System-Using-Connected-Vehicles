@@ -360,6 +360,9 @@ Detailed documentation of our methodology, hardware prototyping, data collection
 
 ---
 
+## Demo Video
+[https://drive.google.com/file/d/1e8OezSjUEtPeAQ3pPi1QPmkpWM1udF5-/view?usp=drivesdk](https://drive.google.com/file/d/1e8OezSjUEtPeAQ3pPi1QPmkpWM1udF5-/view?usp=drivesdk)
+
 ## 👨‍💻 Authors
 
 - Soumyadeep Biswas  
