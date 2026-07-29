@@ -1,7 +1,7 @@
 # routers/insurance.py
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import FileResponse
-from database import accident_collection, insurance_reports_collection
+from database import accident_collection, insurance_reports_collection, devices_collection, users_collection  # added devices & users
 from models import InsuranceReport
 from datetime import datetime, timedelta
 import uuid
@@ -25,6 +25,22 @@ async def generate_report_background(accident_id: str, user_email: str):
         accident = await accident_collection.find_one({"_id": ObjectId(accident_id)})
         if not accident:
             return
+
+        # --- Fetch device and user details ---
+        blackbox_id = accident.get("blackbox_id")
+        device = None
+        user = None
+        if blackbox_id:
+            device = await devices_collection.find_one({"blackbox_id": blackbox_id})
+            if device and device.get("user_id"):
+                user = await users_collection.find_one({"email": device["user_id"]})
+
+        # --- Extract details (fallback to "N/A" if not found) ---
+        vehicle_number = device.get("vehicle_number", "N/A") if device else "N/A"
+        vehicle_type = device.get("vehicle_type", "N/A") if device else "N/A"
+        owner_name = user.get("name", "N/A") if user else "N/A"
+        driver_name = user.get("name", "N/A") if user else "N/A"  # same as owner
+        emergency_contact = user.get("phone", "N/A") if user else "N/A"
 
         report_id = f"INS-{uuid.uuid4().hex[:8].upper()}"
         case_number = f"CASE-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
@@ -50,11 +66,11 @@ async def generate_report_background(accident_id: str, user_email: str):
             "report_id": report_id,
             "accident_id": accident_id,
             "case_number": case_number,
-            "vehicle_number": accident.get("vehicle_number", "N/A"),
-            "vehicle_type": accident.get("vehicle_type", "N/A"),
-            "owner_name": accident.get("owner_name", "N/A"),
-            "driver_name": accident.get("driver_name", "N/A"),
-            "emergency_contact": accident.get("emergency_contact", "N/A"),
+            "vehicle_number": vehicle_number,
+            "vehicle_type": vehicle_type,
+            "owner_name": owner_name,
+            "driver_name": driver_name,
+            "emergency_contact": emergency_contact,
             "insurance_policy_number": accident.get("insurance_policy_number", None),
             "date": accident.get("timestamp").strftime("%Y-%m-%d"),
             "time": accident.get("timestamp").strftime("%H:%M:%S"),
