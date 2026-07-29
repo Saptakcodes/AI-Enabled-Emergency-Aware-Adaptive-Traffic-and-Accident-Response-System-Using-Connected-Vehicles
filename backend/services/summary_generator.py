@@ -1,11 +1,15 @@
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
-def generate_accident_summary(accident: Dict[str, Any], location_info: Dict[str, Any] = None) -> str:
+def generate_accident_summary(
+    accident: Dict[str, Any],
+    location_info: Dict[str, Any] = None
+) -> str:
     """
     Generate a professional natural-language summary of the accident.
     """
     vehicle_number = accident.get("vehicle_number", "Unknown vehicle")
+    vehicle_type = accident.get("vehicle_type", "")
     speed = accident.get("speed_kmph", 0)
     g_force = accident.get("acceleration_g", 0)
     tilt = accident.get("tilt_degree", 0)
@@ -16,7 +20,6 @@ def generate_accident_summary(accident: Dict[str, Any], location_info: Dict[str,
     # Location info
     if location_info:
         address = location_info.get("display_name", "Unknown location")
-        city = location_info.get("city", "")
     else:
         lat = accident.get("latitude", 0)
         lon = accident.get("longitude", 0)
@@ -35,8 +38,13 @@ def generate_accident_summary(accident: Dict[str, Any], location_info: Dict[str,
     else:
         severity = "minor"
 
+    # Build vehicle description
+    vehicle_desc = vehicle_number
+    if vehicle_type and vehicle_type != "N/A":
+        vehicle_desc = f"{vehicle_number} ({vehicle_type})"
+
     # Build summary
-    summary = f"Vehicle {vehicle_number} experienced a {severity} {collision_type} collision at approximately {speed:.0f} km/h near {address}."
+    summary = f"Vehicle {vehicle_desc} experienced a {severity} {collision_type} collision at approximately {speed:.0f} km/h near {address}."
 
     if g_force > 0:
         summary += f" Maximum impact recorded was {g_force:.1f} g with a vehicle inclination of {tilt:.1f}°."

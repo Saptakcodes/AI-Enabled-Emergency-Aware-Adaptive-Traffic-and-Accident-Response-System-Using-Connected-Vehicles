@@ -79,6 +79,10 @@ async def generate_report_background(accident_id: str, user_email: str):
         # ---- Log final values ----
         print(f"📄 Final vehicle_number: {vehicle_number}, vehicle_type: {vehicle_type}")
 
+        # ---- Add vehicle details to accident for summary ----
+        accident["vehicle_number"] = vehicle_number
+        accident["vehicle_type"] = vehicle_type
+
         report_id = f"INS-{uuid.uuid4().hex[:8].upper()}"
         case_number = f"CASE-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
 
@@ -92,7 +96,7 @@ async def generate_report_background(accident_id: str, user_email: str):
             formatted_timeline.append(event_copy)
 
         checklist = build_checklist(accident, report_generated=True)
-        summary = generate_accident_summary(accident)
+        summary = generate_accident_summary(accident)  # Now uses vehicle_number & vehicle_type from accident
 
         g = accident.get("acceleration_g", 0)
         tilt = accident.get("tilt_degree", 0)
@@ -163,7 +167,7 @@ async def generate_report_background(accident_id: str, user_email: str):
             {"$set": {"insurance_report_id": report_id}}
         )
 
-        print(f"✅ Report generated for user {user_email} with vehicle {vehicle_number}")
+        print(f"✅ Report generated for user {user_email} with vehicle {vehicle_number} ({vehicle_type})")
 
     except Exception as e:
         print(f"❌ Error generating insurance report: {e}")
@@ -251,7 +255,7 @@ async def download_insurance_pdf(
     return FileResponse(pdf_path, media_type="application/pdf", filename=f"insurance_report_{report_id}.pdf")
 
 # =========================
-# CHECKLIST, SUMMARY, TIMELINE endpoints (unchanged)
+# CHECKLIST, SUMMARY, TIMELINE endpoints
 # =========================
 @router.get("/checklist/{accident_id}")
 async def get_checklist(
