@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from auth import router as auth_router
 from routers.insurance import router as insurance_router
@@ -29,6 +29,40 @@ from utils.notifications import make_emergency_call
 # -----------------------------------------
 
 app = FastAPI()
+
+# ===============================
+# EXPLICIT OPTIONS HANDLERS FOR LOGIN & SIGNUP
+# ===============================
+@app.options("/login")
+async def options_login():
+    """
+    Handle preflight OPTIONS request for /login.
+    No dependencies, so it won't fail on empty body.
+    """
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, X-Requested-With",
+            "Access-Control-Allow-Credentials": "true",
+        },
+    )
+
+@app.options("/signup")
+async def options_signup():
+    """
+    Handle preflight OPTIONS request for /signup.
+    """
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, X-Requested-With",
+            "Access-Control-Allow-Credentials": "true",
+        },
+    )
 
 # ===============================
 # CORS MIDDLEWARE
