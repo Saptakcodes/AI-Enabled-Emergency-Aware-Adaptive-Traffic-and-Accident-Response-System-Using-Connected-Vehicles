@@ -5,24 +5,11 @@ import API from '../../api';
 
 const PDFDownloadButton = ({ reportId, className = '' }) => {
   const handleDownload = () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("You are not logged in. Please login first.");
-      return;
-    }
-
-    // Get base URL
     const baseURL = API.defaults?.baseURL || 
                     import.meta.env.VITE_API_URL || 
                     'https://ai-enabled-emergency-aware-adaptive.onrender.com';
-    
-    // Build the full URL with token as query parameter
-    const url = `${baseURL}/insurance/report/${reportId}/download?token=${encodeURIComponent(token)}`;
-    
-    // Log to verify
+    const url = `${baseURL}/insurance/report/${reportId}/download`;
     console.log("📄 Download URL:", url);
-    
-    // Open in new tab
     window.open(url, '_blank');
   };
 
