@@ -1,5 +1,4 @@
 from fastapi import FastAPI, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
 from auth import router as auth_router
 from routers.insurance import router as insurance_router
 
@@ -31,13 +30,13 @@ from utils.notifications import make_emergency_call
 app = FastAPI()
 
 # ===============================
-# CUSTOM MIDDLEWARE TO HANDLE ALL OPTIONS REQUESTS
+# SINGLE MIDDLEWARE FOR ALL CORS & OPTIONS
 # ===============================
 @app.middleware("http")
-async def options_middleware(request: Request, call_next):
+async def cors_middleware(request: Request, call_next):
     """
-    Intercept all OPTIONS requests and return 200 with CORS headers.
-    This runs before any routing, so it bypasses all dependencies.
+    Handle all requests: for OPTIONS, return 200 with CORS headers.
+    For other requests, add CORS headers to the response.
     """
     if request.method == "OPTIONS":
         return Response(
@@ -50,7 +49,6 @@ async def options_middleware(request: Request, call_next):
             },
         )
     
-    # For non-OPTIONS requests, proceed and add CORS headers to the response
     response = await call_next(request)
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
@@ -58,25 +56,7 @@ async def options_middleware(request: Request, call_next):
     response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
-# ===============================
-# (Optional) CORS middleware – can be removed if the above covers everything,
-# but we'll keep it as a fallback.
-# ===============================
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-        "https://ai-enabled-emergency-aware-adaptive.vercel.app",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Include routers
+# Include routers (NO CORS middleware added)
 app.include_router(auth_router)
 app.include_router(geocoding_router)
 app.include_router(devices_router)
