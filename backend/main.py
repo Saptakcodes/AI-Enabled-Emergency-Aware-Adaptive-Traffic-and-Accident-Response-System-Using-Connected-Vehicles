@@ -31,12 +31,31 @@ from utils.notifications import make_emergency_call
 app = FastAPI()
 
 # ===============================
-# CATCH‑ALL OPTIONS ROUTE
+# SPECIFIC OPTIONS HANDLER FOR /login
+# ===============================
+@app.options("/login")
+async def options_login():
+    """
+    Handle preflight OPTIONS request for /login.
+    No dependencies, so it won't fail on empty body.
+    """
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, X-Requested-With",
+            "Access-Control-Allow-Credentials": "true",
+        },
+    )
+
+# ===============================
+# CATCH‑ALL OPTIONS ROUTE (for any other preflight)
 # ===============================
 @app.options("/{path:path}")
 async def options_handler():
     """
-    Respond to all OPTIONS preflight requests with CORS headers.
+    Respond to all other OPTIONS preflight requests with CORS headers.
     """
     return Response(
         status_code=200,
