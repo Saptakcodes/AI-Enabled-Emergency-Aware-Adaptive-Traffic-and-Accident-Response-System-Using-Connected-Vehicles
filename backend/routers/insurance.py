@@ -1,18 +1,18 @@
 # routers/insurance.py
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import FileResponse
-from database import accident_collection, insurance_reports_collection  # removed geocoding_cache
+from database import accident_collection, insurance_reports_collection
 from models import InsuranceReport
 from datetime import datetime, timedelta
 import uuid
 import asyncio
 import os
-from bson import ObjectId  # ← IMPORTANT: added at top
-from ..services.summary_generator import generate_accident_summary
-from ..services.timeline_builder import build_timeline
-from ..services.checklist_builder import build_checklist
-from ..services.pdf_generator import generate_insurance_pdf
-from ..utils.qr_generator import generate_qr_code
+from bson import ObjectId
+from services.summary_generator import generate_accident_summary      # ← Changed
+from services.timeline_builder import build_timeline                  # ← Changed
+from services.checklist_builder import build_checklist                # ← Changed
+from services.pdf_generator import generate_insurance_pdf             # ← Changed
+from utils.qr_generator import generate_qr_code                      # ← Changed
 from auth import get_current_user, require_roles
 
 router = APIRouter(prefix="/insurance", tags=["insurance"])
@@ -26,20 +26,13 @@ async def generate_report_background(accident_id: str, user_email: str):
         if not accident:
             return
 
-        # Build report data
         report_id = f"INS-{uuid.uuid4().hex[:8].upper()}"
         case_number = f"CASE-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
 
-        # Build timeline
         timeline = build_timeline(accident)
-
-        # Build checklist
         checklist = build_checklist(accident, report_generated=True)
-
-        # Generate summary
         summary = generate_accident_summary(accident)
 
-        # Determine severity
         g = accident.get("acceleration_g", 0)
         tilt = accident.get("tilt_degree", 0)
         if g > 5 or tilt > 40:
@@ -51,7 +44,6 @@ async def generate_report_background(accident_id: str, user_email: str):
         else:
             severity = "minor"
 
-        # QR code data (URL to report)
         qr_data = f"https://yourdomain.com/report/{report_id}"
 
         report_data = {
@@ -97,18 +89,14 @@ async def generate_report_background(accident_id: str, user_email: str):
             "qr_code_data": qr_data
         }
 
-        # Generate PDF
         pdf_path = await generate_insurance_pdf(accident, report_data)
         report_data["pdf_url"] = pdf_path
 
-        # Generate QR code image (base64)
         qr_img = generate_qr_code(qr_data)
         report_data["qr_code_image"] = qr_img
 
-        # Store in database
         await insurance_reports_collection.insert_one(report_data)
 
-        # Update accident with report reference
         await accident_collection.update_one(
             {"_id": ObjectId(accident_id)},
             {"$set": {"insurance_report_id": report_id}}
@@ -123,10 +111,6 @@ async def generate_insurance_report(
     background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Trigger generation of an insurance report for a given accident.
-    Returns immediately with a report ID; the report is generated in the background.
-    """
     try:
         accident = await accident_collection.find_one({"_id": ObjectId(accident_id)})
     except:
@@ -134,14 +118,11 @@ async def generate_insurance_report(
     if not accident:
         raise HTTPException(status_code=404, detail="Accident not found")
 
-    # Check if report already exists
     existing = await insurance_reports_collection.find_one({"accident_id": accident_id})
     if existing:
         return {"report_id": existing["report_id"], "message": "Report already exists"}
 
-    # Start background task
     background_tasks.add_task(generate_report_background, accident_id, current_user.get("email"))
-
     return {"message": "Report generation started", "accident_id": accident_id}
 
 @router.get("/report/{report_id}")
@@ -149,9 +130,6 @@ async def get_insurance_report(
     report_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Retrieve a generated insurance report by report_id.
-    """
     report = await insurance_reports_collection.find_one({"report_id": report_id})
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
@@ -163,9 +141,6 @@ async def download_insurance_pdf(
     report_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Download the PDF version of the insurance report.
-    """
     report = await insurance_reports_collection.find_one({"report_id": report_id})
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
@@ -179,9 +154,6 @@ async def get_checklist(
     accident_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Get the claim readiness checklist for a specific accident.
-    """
     try:
         accident = await accident_collection.find_one({"_id": ObjectId(accident_id)})
     except:
@@ -198,9 +170,6 @@ async def get_summary(
     accident_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Get the AI-generated summary for an accident.
-    """
     try:
         accident = await accident_collection.find_one({"_id": ObjectId(accident_id)})
     except:
@@ -216,9 +185,6 @@ async def get_timeline(
     accident_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Get the incident timeline for an accident.
-    """
     try:
         accident = await accident_collection.find_one({"_id": ObjectId(accident_id)})
     except:
