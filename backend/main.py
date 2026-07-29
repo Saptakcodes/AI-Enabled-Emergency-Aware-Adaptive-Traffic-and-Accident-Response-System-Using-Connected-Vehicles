@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from auth import router as auth_router
 from routers.insurance import router as insurance_router
@@ -30,13 +30,23 @@ from utils.notifications import make_emergency_call
 
 app = FastAPI()
 
-# ====== TEMPORARY FIX FOR OPTIONS /login ======
-@app.options("/login")
-async def options_login():
-    return {}
-# ==============================================
+# ===============================
+# CUSTOM OPTIONS MIDDLEWARE
+# ===============================
+@app.middleware("http")
+async def options_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        response = Response(status_code=200)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, X-Requested-With"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response
+    return await call_next(request)
 
-# CORS configuration
+# ===============================
+# CORS MIDDLEWARE
+# ===============================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
