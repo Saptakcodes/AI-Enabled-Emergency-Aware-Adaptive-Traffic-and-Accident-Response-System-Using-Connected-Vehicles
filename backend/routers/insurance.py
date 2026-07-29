@@ -126,12 +126,12 @@ async def generate_insurance_report(
     return {"message": "Report generation started", "accident_id": accident_id}
 
 # =========================
-# UPDATED GET ENDPOINT WITH DOWNLOAD SUPPORT
+# GET REPORT (JSON or PDF download)
 # =========================
 @router.get("/report/{report_id}")
 async def get_insurance_report(
     report_id: str,
-    download: bool = False,  # ← New query parameter
+    download: bool = False,
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -141,30 +141,26 @@ async def get_insurance_report(
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     
-    # If download parameter is present, serve the PDF
     if download:
         pdf_path = report.get("pdf_url")
         if not pdf_path or not os.path.exists(pdf_path):
             raise HTTPException(status_code=404, detail="PDF not found")
         return FileResponse(pdf_path, media_type="application/pdf", filename=f"insurance_report_{report_id}.pdf")
     
-    # Otherwise, return JSON
     report["_id"] = str(report["_id"])
     return report
 
 # =========================
-# KEEP THE DOWNLOAD ENDPOINT FOR BACKWARD COMPATIBILITY (optional)
+# DOWNLOAD ENDPOINT - NO AUTHENTICATION (FOR DEMO)
 # =========================
 @router.get("/report/{report_id}/download")
 async def download_insurance_pdf(
     report_id: str,
-    current_user: dict = Depends(get_current_user)
 ):
     """
-    Alternative download endpoint (legacy). Redirects to the main endpoint with download=true.
+    Download the PDF version of the insurance report.
+    (Temporarily no authentication for demo purposes)
     """
-    # Redirect to the main endpoint with download=true
-    # Since we can't redirect in FastAPI easily, we'll just call the same logic.
     report = await insurance_reports_collection.find_one({"report_id": report_id})
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
