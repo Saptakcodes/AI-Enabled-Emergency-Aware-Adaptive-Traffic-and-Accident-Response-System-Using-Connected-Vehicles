@@ -21,9 +21,9 @@ def format_timeline_timestamp(iso_str: str) -> str:
     """Convert ISO timestamp to human-readable time (HH:MM:SS AM/PM)."""
     try:
         dt = datetime.fromisoformat(iso_str.replace('Z', '+00:00'))
-        return dt.strftime("%I:%M:%S %p").lstrip('0')  # e.g., "10:09:54 AM"
+        return dt.strftime("%I:%M:%S %p").lstrip('0')
     except:
-        return iso_str  # fallback to original
+        return iso_str
 
 async def generate_report_background(accident_id: str, user_email: str):
     """
@@ -34,7 +34,7 @@ async def generate_report_background(accident_id: str, user_email: str):
         if not accident:
             return
 
-        # ---- Fetch user details using the logged-in user's email ----
+        # ---- Fetch user details ----
         user = await users_collection.find_one({"email": user_email})
         if user:
             owner_name = user.get("name", "N/A")
@@ -43,21 +43,36 @@ async def generate_report_background(accident_id: str, user_email: str):
         else:
             owner_name = driver_name = emergency_contact = "N/A"
 
-        # ---- Fetch device details using blackbox_id from accident ----
+        # ---- Fetch device details ----
         blackbox_id = accident.get("blackbox_id")
         device = None
         vehicle_number = "N/A"
         vehicle_type = "N/A"
+
+        # First try: use blackbox_id from accident
         if blackbox_id:
             device = await devices_collection.find_one({"blackbox_id": blackbox_id})
             if device:
                 vehicle_number = device.get("vehicle_number", "N/A")
                 vehicle_type = device.get("vehicle_type", "N/A")
+                print(f"✅ Device found via blackbox_id: {vehicle_number} ({vehicle_type})")
+            else:
+                print(f"⚠️ No device found for blackbox_id: {blackbox_id}")
+
+        # Fallback: if no device found, try user's claimed device
+        if not device and user:
+            user_device = await devices_collection.find_one({"user_id": user_email})
+            if user_device:
+                vehicle_number = user_device.get("vehicle_number", "N/A")
+                vehicle_type = user_device.get("vehicle_type", "N/A")
+                print(f"✅ Device found via user email: {vehicle_number} ({vehicle_type})")
+            else:
+                print(f"⚠️ No device claimed by user: {user_email}")
 
         report_id = f"INS-{uuid.uuid4().hex[:8].upper()}"
         case_number = f"CASE-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
 
-        # Build timeline and reformat timestamps for readability
+        # Build timeline and reformat timestamps
         raw_timeline = build_timeline(accident)
         formatted_timeline = []
         for event in raw_timeline:
@@ -115,7 +130,7 @@ async def generate_report_background(accident_id: str, user_email: str):
             "traffic_signal_actions": accident.get("traffic_signal_actions", []),
             "green_corridor_activated": accident.get("green_corridor_activated", False),
             "manual_override_used": accident.get("manual_override_used", False),
-            "timeline": formatted_timeline,  # <-- Use formatted timeline
+            "timeline": formatted_timeline,
             "nearby_responders": [],
             "ai_summary": summary,
             "checklist": checklist,
@@ -138,8 +153,10 @@ async def generate_report_background(accident_id: str, user_email: str):
             {"$set": {"insurance_report_id": report_id}}
         )
 
+        print(f"✅ Report generated for user {user_email} with vehicle {vehicle_number}")
+
     except Exception as e:
-        print(f"Error generating insurance report: {e}")
+        print(f"❌ Error generating insurance report: {e}")
 
 @router.post("/generate/{accident_id}")
 async def generate_insurance_report(
@@ -176,16 +193,12 @@ async def get_insurance_report(
     
     if download:
         pdf_path = report.get("pdf_url")
-        # If PDF missing, try to regenerate it on the fly
         if not pdf_path or not os.path.exists(pdf_path):
             print(f"📄 PDF missing for report {report_id}, regenerating...")
-            # Get the accident data
             accident = await accident_collection.find_one({"_id": ObjectId(report["accident_id"])})
             if not accident:
                 raise HTTPException(status_code=404, detail="Accident data not found")
-            # Regenerate PDF
             new_pdf_path = await generate_insurance_pdf(accident, report)
-            # Update database with new path
             await insurance_reports_collection.update_one(
                 {"report_id": report_id},
                 {"$set": {"pdf_url": new_pdf_path}}
@@ -206,16 +219,11 @@ async def get_insurance_report(
 async def download_insurance_pdf(
     report_id: str,
 ):
-    """
-    Download the PDF version of the insurance report.
-    (Temporarily no authentication for demo purposes)
-    """
     report = await insurance_reports_collection.find_one({"report_id": report_id})
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     
     pdf_path = report.get("pdf_url")
-    # If PDF missing, regenerate it on the fly
     if not pdf_path or not os.path.exists(pdf_path):
         print(f"📄 PDF missing for report {report_id}, regenerating...")
         accident = await accident_collection.find_one({"_id": ObjectId(report["accident_id"])})
@@ -232,6 +240,9 @@ async def download_insurance_pdf(
         raise HTTPException(status_code=404, detail="PDF not found")
     return FileResponse(pdf_path, media_type="application/pdf", filename=f"insurance_report_{report_id}.pdf")
 
+# =========================
+# CHECKLIST, SUMMARY, TIMELINE endpoints (unchanged)
+# =========================
 @router.get("/checklist/{accident_id}")
 async def get_checklist(
     accident_id: str,
@@ -275,7 +286,6 @@ async def get_timeline(
     if not accident:
         raise HTTPException(status_code=404, detail="Accident not found")
 
-    # Return formatted timeline
     raw_timeline = build_timeline(accident)
     for event in raw_timeline:
         if "timestamp" in event:
