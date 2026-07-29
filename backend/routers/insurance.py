@@ -8,14 +8,20 @@ import uuid
 import asyncio
 import os
 from bson import ObjectId
-from services.summary_generator import generate_accident_summary      # ← Changed
-from services.timeline_builder import build_timeline                  # ← Changed
-from services.checklist_builder import build_checklist                # ← Changed
-from services.pdf_generator import generate_insurance_pdf             # ← Changed
-from services.qr_generator import generate_qr_code                    # ← Changed
+from services.summary_generator import generate_accident_summary
+from services.timeline_builder import build_timeline
+from services.checklist_builder import build_checklist
+from services.pdf_generator import generate_insurance_pdf
+from services.qr_generator import generate_qr_code
 from auth import get_current_user, require_roles
+from jose import jwt, JWTError  # ← ADDED
+import os
 
 router = APIRouter(prefix="/insurance", tags=["insurance"])
+
+# Get secret key from environment for token validation
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 async def generate_report_background(accident_id: str, user_email: str):
     """
@@ -136,11 +142,29 @@ async def get_insurance_report(
     report["_id"] = str(report["_id"])
     return report
 
+# =========================
+# UPDATED DOWNLOAD ENDPOINT WITH TOKEN QUERY PARAM
+# =========================
 @router.get("/report/{report_id}/download")
 async def download_insurance_pdf(
     report_id: str,
-    current_user: dict = Depends(get_current_user)
+    token: str = None,  # ← Accept token as query parameter
 ):
+    """
+    Download the PDF version of the insurance report.
+    Authenticates via token query parameter (for direct link access).
+    """
+    # If token is provided, validate it
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            # Optionally, you can check payload content (e.g., email) if needed
+        except JWTError:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    else:
+        # If no token, reject the request
+        raise HTTPException(status_code=401, detail="Missing token")
+
     report = await insurance_reports_collection.find_one({"report_id": report_id})
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")

@@ -1,11 +1,14 @@
 // src/components/insurance/PDFDownloadButton.jsx
 import React from 'react';
 import { FaFilePdf } from 'react-icons/fa';
-import { downloadInsurancePDF } from '../../services/insuranceApi';
+import API from '../../api';
 
 const PDFDownloadButton = ({ reportId, className = '' }) => {
   const handleDownload = () => {
-    const url = downloadInsurancePDF(reportId);
+    const token = localStorage.getItem("token");
+    const baseURL = API.defaults.baseURL || 'https://ai-enabled-emergency-aware-adaptive.onrender.com';
+    // Include token as query parameter
+    const url = `${baseURL}/insurance/report/${reportId}/download?token=${token}`;
     window.open(url, '_blank');
   };
 
