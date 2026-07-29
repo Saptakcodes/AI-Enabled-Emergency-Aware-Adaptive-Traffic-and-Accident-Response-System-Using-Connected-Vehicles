@@ -1,7 +1,7 @@
 # routers/insurance.py
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import FileResponse
-from database import accident_collection, insurance_reports_collection, devices_collection, users_collection  # added devices & users
+from database import accident_collection, insurance_reports_collection, devices_collection, users_collection
 from models import InsuranceReport
 from datetime import datetime, timedelta
 import uuid
@@ -17,6 +17,14 @@ from auth import get_current_user, require_roles
 
 router = APIRouter(prefix="/insurance", tags=["insurance"])
 
+def format_timeline_timestamp(iso_str: str) -> str:
+    """Convert ISO timestamp to human-readable time (HH:MM:SS AM/PM)."""
+    try:
+        dt = datetime.fromisoformat(iso_str.replace('Z', '+00:00'))
+        return dt.strftime("%I:%M:%S %p").lstrip('0')  # e.g., "10:09:54 AM"
+    except:
+        return iso_str  # fallback to original
+
 async def generate_report_background(accident_id: str, user_email: str):
     """
     Background task to generate and store the insurance report.
@@ -26,26 +34,38 @@ async def generate_report_background(accident_id: str, user_email: str):
         if not accident:
             return
 
-        # --- Fetch device and user details ---
+        # ---- Fetch user details using the logged-in user's email ----
+        user = await users_collection.find_one({"email": user_email})
+        if user:
+            owner_name = user.get("name", "N/A")
+            driver_name = user.get("name", "N/A")
+            emergency_contact = user.get("phone", "N/A")
+        else:
+            owner_name = driver_name = emergency_contact = "N/A"
+
+        # ---- Fetch device details using blackbox_id from accident ----
         blackbox_id = accident.get("blackbox_id")
         device = None
-        user = None
+        vehicle_number = "N/A"
+        vehicle_type = "N/A"
         if blackbox_id:
             device = await devices_collection.find_one({"blackbox_id": blackbox_id})
-            if device and device.get("user_id"):
-                user = await users_collection.find_one({"email": device["user_id"]})
-
-        # --- Extract details (fallback to "N/A" if not found) ---
-        vehicle_number = device.get("vehicle_number", "N/A") if device else "N/A"
-        vehicle_type = device.get("vehicle_type", "N/A") if device else "N/A"
-        owner_name = user.get("name", "N/A") if user else "N/A"
-        driver_name = user.get("name", "N/A") if user else "N/A"  # same as owner
-        emergency_contact = user.get("phone", "N/A") if user else "N/A"
+            if device:
+                vehicle_number = device.get("vehicle_number", "N/A")
+                vehicle_type = device.get("vehicle_type", "N/A")
 
         report_id = f"INS-{uuid.uuid4().hex[:8].upper()}"
         case_number = f"CASE-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
 
-        timeline = build_timeline(accident)
+        # Build timeline and reformat timestamps for readability
+        raw_timeline = build_timeline(accident)
+        formatted_timeline = []
+        for event in raw_timeline:
+            event_copy = event.copy()
+            if "timestamp" in event_copy:
+                event_copy["timestamp"] = format_timeline_timestamp(event_copy["timestamp"])
+            formatted_timeline.append(event_copy)
+
         checklist = build_checklist(accident, report_generated=True)
         summary = generate_accident_summary(accident)
 
@@ -95,7 +115,7 @@ async def generate_report_background(accident_id: str, user_email: str):
             "traffic_signal_actions": accident.get("traffic_signal_actions", []),
             "green_corridor_activated": accident.get("green_corridor_activated", False),
             "manual_override_used": accident.get("manual_override_used", False),
-            "timeline": timeline,
+            "timeline": formatted_timeline,  # <-- Use formatted timeline
             "nearby_responders": [],
             "ai_summary": summary,
             "checklist": checklist,
@@ -255,5 +275,9 @@ async def get_timeline(
     if not accident:
         raise HTTPException(status_code=404, detail="Accident not found")
 
-    timeline = build_timeline(accident)
-    return {"timeline": timeline}
+    # Return formatted timeline
+    raw_timeline = build_timeline(accident)
+    for event in raw_timeline:
+        if "timestamp" in event:
+            event["timestamp"] = format_timeline_timestamp(event["timestamp"])
+    return {"timeline": raw_timeline}
