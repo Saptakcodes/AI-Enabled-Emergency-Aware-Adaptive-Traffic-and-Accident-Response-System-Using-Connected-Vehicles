@@ -34,13 +34,20 @@ async def generate_report_background(accident_id: str, user_email: str):
         if not accident:
             return
 
+        # ---- LOG ACCIDENT DATA ----
+        print(f"🔍 Accident ID: {accident_id}")
+        print(f"🔍 Accident blackbox_id: {accident.get('blackbox_id')}")
+        print(f"👤 User email: {user_email}")
+
         # ---- Fetch user details ----
         user = await users_collection.find_one({"email": user_email})
         if user:
+            print(f"✅ User found: {user.get('name')} ({user.get('email')})")
             owner_name = user.get("name", "N/A")
             driver_name = user.get("name", "N/A")
             emergency_contact = user.get("phone", "N/A")
         else:
+            print(f"❌ User not found for email: {user_email}")
             owner_name = driver_name = emergency_contact = "N/A"
 
         # ---- Fetch device details ----
@@ -68,6 +75,9 @@ async def generate_report_background(accident_id: str, user_email: str):
                 print(f"✅ Device found via user email: {vehicle_number} ({vehicle_type})")
             else:
                 print(f"⚠️ No device claimed by user: {user_email}")
+
+        # ---- Log final values ----
+        print(f"📄 Final vehicle_number: {vehicle_number}, vehicle_type: {vehicle_type}")
 
         report_id = f"INS-{uuid.uuid4().hex[:8].upper()}"
         case_number = f"CASE-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
