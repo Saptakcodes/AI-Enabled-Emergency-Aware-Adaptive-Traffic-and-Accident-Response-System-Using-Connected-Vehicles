@@ -84,6 +84,8 @@ try:
     accident_collection = blackbox_db["accident_records"]
     post_accident_collection = blackbox_db["post_accident_reports"]
     traffic_signals_collection = blackbox_db["traffic_signals"]   # ← NEW
+    # In BLACKBOX DATABASE section
+    insurance_reports_collection = blackbox_db["insurance_reports"]
 
     print("✅ Blackbox DB Connected")
     print("✅ Collections:")

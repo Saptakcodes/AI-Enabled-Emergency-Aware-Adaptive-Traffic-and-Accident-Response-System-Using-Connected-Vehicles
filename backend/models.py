@@ -84,3 +84,50 @@ class TrafficSignal(BaseModel):
 class SignalOverride(BaseModel):
     new_state: Literal["red", "yellow", "green"]
     duration_seconds: Optional[int] = None
+
+
+
+# INSURANCE REPORT MODELS
+
+class InsuranceReport(BaseModel):
+    report_id: str
+    accident_id: str
+    case_number: str
+    vehicle_number: str
+    vehicle_type: str
+    owner_name: str
+    driver_name: str
+    emergency_contact: str
+    insurance_policy_number: Optional[str] = None
+    date: datetime
+    time: str
+    gps_coordinates: dict  # {"latitude": float, "longitude": float}
+    full_address: str
+    nearest_landmark: Optional[str] = None
+    nearest_hospital: Optional[str] = None
+    nearest_police_station: Optional[str] = None
+    weather: str = "Clear"  # placeholder
+    road_type: Optional[str] = None
+    impact_direction: Optional[str] = None
+    collision_type: Optional[str] = None
+    vehicle_speed: float
+    max_g_force: float
+    max_tilt: float
+    human_presence: bool
+    breathing_status: bool
+    fire_detected: bool
+    ai_confidence: float
+    accident_severity: Literal["minor", "moderate", "severe", "critical"]
+    emergency_actions_taken: List[str] = []
+    traffic_signal_actions: List[str] = []
+    green_corridor_activated: bool = False
+    manual_override_used: bool = False
+    timeline: List[dict] = []   # list of events with timestamp, description, severity
+    nearby_responders: List[dict] = []
+    ai_summary: str
+    checklist: List[dict] = []  # each with "item", "status": True/False
+    digital_signature: Optional[str] = None
+    generated_at: datetime
+    report_version: str = "1.0"
+    pdf_url: Optional[str] = None
+    qr_code_data: Optional[str] = None

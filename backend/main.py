@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from auth import router as auth_router
+from routers.insurance import router as insurance_router
 
 from database import (
     live_sensor_collection,
@@ -49,6 +50,7 @@ app.include_router(auth_router)
 app.include_router(geocoding_router)
 app.include_router(devices_router)
 app.include_router(signals_router)
+app.include_router(insurance_router)
 
 # Conditionally include development routes
 if os.getenv("ENV") == "development":
