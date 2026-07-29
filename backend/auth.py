@@ -39,6 +39,18 @@ security = HTTPBearer()
 
 
 # =========================
+# OPTIONS HANDLER FOR CORS PREFLIGHT
+# =========================
+@router.options("/login")
+async def options_login():
+    """
+    Handle preflight OPTIONS request for /login.
+    No dependencies, so it won't fail on empty body.
+    """
+    return {}
+
+
+# =========================
 # PASSWORD FUNCTIONS
 # =========================
 
