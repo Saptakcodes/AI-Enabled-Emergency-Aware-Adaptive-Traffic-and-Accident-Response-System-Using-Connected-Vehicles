@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from auth import router as auth_router
 from routers.insurance import router as insurance_router
@@ -31,41 +31,36 @@ from utils.notifications import make_emergency_call
 app = FastAPI()
 
 # ===============================
-# EXPLICIT OPTIONS HANDLERS FOR LOGIN & SIGNUP
+# CUSTOM MIDDLEWARE TO HANDLE ALL OPTIONS REQUESTS
 # ===============================
-@app.options("/login")
-async def options_login():
+@app.middleware("http")
+async def options_middleware(request: Request, call_next):
     """
-    Handle preflight OPTIONS request for /login.
-    No dependencies, so it won't fail on empty body.
+    Intercept all OPTIONS requests and return 200 with CORS headers.
+    This runs before any routing, so it bypasses all dependencies.
     """
-    return Response(
-        status_code=200,
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, X-Requested-With",
-            "Access-Control-Allow-Credentials": "true",
-        },
-    )
-
-@app.options("/signup")
-async def options_signup():
-    """
-    Handle preflight OPTIONS request for /signup.
-    """
-    return Response(
-        status_code=200,
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, X-Requested-With",
-            "Access-Control-Allow-Credentials": "true",
-        },
-    )
+    if request.method == "OPTIONS":
+        return Response(
+            status_code=200,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, X-Requested-With",
+                "Access-Control-Allow-Credentials": "true",
+            },
+        )
+    
+    # For non-OPTIONS requests, proceed and add CORS headers to the response
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, X-Requested-With"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
 # ===============================
-# CORS MIDDLEWARE
+# (Optional) CORS middleware – can be removed if the above covers everything,
+# but we'll keep it as a fallback.
 # ===============================
 app.add_middleware(
     CORSMiddleware,
