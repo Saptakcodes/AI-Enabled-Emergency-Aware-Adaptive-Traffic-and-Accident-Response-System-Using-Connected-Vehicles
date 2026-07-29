@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, HTTPException
 from auth import router as auth_router
 from routers.insurance import router as insurance_router
 
@@ -17,6 +17,7 @@ from models import (
 from datetime import datetime, timedelta
 import asyncio
 import math
+from bson import ObjectId  # ← NEW
 
 from geocoding import router as geocoding_router
 from devices import router as devices_router
@@ -173,6 +174,27 @@ async def get_accidents():
     for d in data:
         d["_id"] = str(d["_id"])
     return data
+
+
+# =========================
+# NEW: GET SINGLE ACCIDENT BY ID
+# =========================
+@app.get("/accident/{accident_id}")
+async def get_accident_by_id(accident_id: str):
+    """
+    Fetch a single accident by its MongoDB ObjectId.
+    Used by the AccidentDetailPage frontend.
+    """
+    try:
+        doc = await accident_collection.find_one({"_id": ObjectId(accident_id)})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid accident ID format")
+    
+    if not doc:
+        raise HTTPException(status_code=404, detail="Accident not found")
+    
+    doc["_id"] = str(doc["_id"])
+    return doc
 
 
 # =========================
