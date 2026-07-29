@@ -1,11 +1,13 @@
+# routers/insurance.py
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import FileResponse
-from database import accident_collection, insurance_reports_collection, geocoding_cache
+from database import accident_collection, insurance_reports_collection  # removed geocoding_cache
 from models import InsuranceReport
 from datetime import datetime, timedelta
 import uuid
 import asyncio
 import os
+from bson import ObjectId  # ← IMPORTANT: added at top
 from ..services.summary_generator import generate_accident_summary
 from ..services.timeline_builder import build_timeline
 from ..services.checklist_builder import build_checklist
@@ -27,10 +29,6 @@ async def generate_report_background(accident_id: str, user_email: str):
         # Build report data
         report_id = f"INS-{uuid.uuid4().hex[:8].upper()}"
         case_number = f"CASE-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
-
-        # Gather data
-        # We'll fetch nearest services from geocoding cache or compute fresh
-        # For brevity, we'll use placeholder data
 
         # Build timeline
         timeline = build_timeline(accident)
@@ -73,7 +71,7 @@ async def generate_report_background(accident_id: str, user_email: str):
             "nearest_landmark": accident.get("nearest_landmark", None),
             "nearest_hospital": accident.get("nearest_hospital", None),
             "nearest_police_station": accident.get("nearest_police_station", None),
-            "weather": "Clear",  # placeholder
+            "weather": "Clear",
             "road_type": accident.get("road_type", None),
             "impact_direction": accident.get("impact_direction", None),
             "collision_type": accident.get("collision_type", None),
@@ -110,7 +108,7 @@ async def generate_report_background(accident_id: str, user_email: str):
         # Store in database
         await insurance_reports_collection.insert_one(report_data)
 
-        # Optionally, update accident with report reference
+        # Update accident with report reference
         await accident_collection.update_one(
             {"_id": ObjectId(accident_id)},
             {"$set": {"insurance_report_id": report_id}}
@@ -129,8 +127,6 @@ async def generate_insurance_report(
     Trigger generation of an insurance report for a given accident.
     Returns immediately with a report ID; the report is generated in the background.
     """
-    # Validate accident exists
-    from bson import ObjectId
     try:
         accident = await accident_collection.find_one({"_id": ObjectId(accident_id)})
     except:
@@ -159,7 +155,6 @@ async def get_insurance_report(
     report = await insurance_reports_collection.find_one({"report_id": report_id})
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
-    # Convert ObjectId to string
     report["_id"] = str(report["_id"])
     return report
 
@@ -187,7 +182,6 @@ async def get_checklist(
     """
     Get the claim readiness checklist for a specific accident.
     """
-    from bson import ObjectId
     try:
         accident = await accident_collection.find_one({"_id": ObjectId(accident_id)})
     except:
@@ -195,7 +189,6 @@ async def get_checklist(
     if not accident:
         raise HTTPException(status_code=404, detail="Accident not found")
 
-    # Check if report exists
     report = await insurance_reports_collection.find_one({"accident_id": accident_id})
     checklist = build_checklist(accident, report_generated=bool(report))
     return checklist
@@ -208,7 +201,6 @@ async def get_summary(
     """
     Get the AI-generated summary for an accident.
     """
-    from bson import ObjectId
     try:
         accident = await accident_collection.find_one({"_id": ObjectId(accident_id)})
     except:
@@ -227,7 +219,6 @@ async def get_timeline(
     """
     Get the incident timeline for an accident.
     """
-    from bson import ObjectId
     try:
         accident = await accident_collection.find_one({"_id": ObjectId(accident_id)})
     except:

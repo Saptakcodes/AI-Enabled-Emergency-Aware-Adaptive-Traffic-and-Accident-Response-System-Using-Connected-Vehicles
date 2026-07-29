@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
-from typing import Literal
+from typing import Literal, Optional, List  # ← Added List
+from datetime import datetime
 
 class UserSignup(BaseModel):
     name: str
@@ -13,12 +14,6 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-
-from datetime import datetime
-from typing import Optional
-
-#accident-part
-
 class SensorData(BaseModel):
     blackbox_id: str
     latitude: float
@@ -30,7 +25,6 @@ class SensorData(BaseModel):
     breathing_detected: bool
     fire_detected: bool
     timestamp: Optional[datetime] = None
-
 
 class AccidentRecord(BaseModel):
     blackbox_id: str
@@ -46,16 +40,14 @@ class AccidentRecord(BaseModel):
     police_notified: bool = False
     timestamp: Optional[datetime] = None
 
-
 class Device(BaseModel):
     blackbox_id: str
-    user_id: Optional[str] = None  
+    user_id: Optional[str] = None
     vehicle_number: Optional[str] = None
     vehicle_type: Optional[str] = None
     is_active: bool = False
     registered_at: Optional[datetime] = None
     claimed_at: Optional[datetime] = None
-
 
 class PostAccidentReport(BaseModel):
     blackbox_id: str
@@ -64,12 +56,9 @@ class PostAccidentReport(BaseModel):
     fire_detected: bool
     timestamp: Optional[datetime] = None
 
-
-#traffic-simulation-table-part
-
 class TrafficSignal(BaseModel):
     signal_id: str
-    location: dict                     # GeoJSON Point: {"type": "Point", "coordinates": [lon, lat]}
+    location: dict
     location_name: Optional[str] = None
     current_state: Literal["red", "yellow", "green"]
     last_updated: Optional[datetime] = None
@@ -80,15 +69,13 @@ class TrafficSignal(BaseModel):
     base_cycle_time: int = 30
     current_cycle_time: int = 30
 
-
 class SignalOverride(BaseModel):
     new_state: Literal["red", "yellow", "green"]
     duration_seconds: Optional[int] = None
 
-
-
+# =========================
 # INSURANCE REPORT MODELS
-
+# =========================
 class InsuranceReport(BaseModel):
     report_id: str
     accident_id: str
@@ -99,14 +86,14 @@ class InsuranceReport(BaseModel):
     driver_name: str
     emergency_contact: str
     insurance_policy_number: Optional[str] = None
-    date: datetime
+    date: str
     time: str
-    gps_coordinates: dict  # {"latitude": float, "longitude": float}
+    gps_coordinates: dict
     full_address: str
     nearest_landmark: Optional[str] = None
     nearest_hospital: Optional[str] = None
     nearest_police_station: Optional[str] = None
-    weather: str = "Clear"  # placeholder
+    weather: str = "Clear"
     road_type: Optional[str] = None
     impact_direction: Optional[str] = None
     collision_type: Optional[str] = None
@@ -122,10 +109,10 @@ class InsuranceReport(BaseModel):
     traffic_signal_actions: List[str] = []
     green_corridor_activated: bool = False
     manual_override_used: bool = False
-    timeline: List[dict] = []   # list of events with timestamp, description, severity
+    timeline: List[dict] = []
     nearby_responders: List[dict] = []
     ai_summary: str
-    checklist: List[dict] = []  # each with "item", "status": True/False
+    checklist: List[dict] = []
     digital_signature: Optional[str] = None
     generated_at: datetime
     report_version: str = "1.0"

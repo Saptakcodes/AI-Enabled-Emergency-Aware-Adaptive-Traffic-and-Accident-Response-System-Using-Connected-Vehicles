@@ -30,6 +30,12 @@ from utils.notifications import make_emergency_call
 
 app = FastAPI()
 
+# ====== TEMPORARY FIX FOR OPTIONS /login ======
+@app.options("/login")
+async def options_login():
+    return {}
+# ==============================================
+
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,

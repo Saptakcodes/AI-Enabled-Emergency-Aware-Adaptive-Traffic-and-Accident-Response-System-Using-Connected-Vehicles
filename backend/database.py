@@ -109,5 +109,6 @@ __all__ = [
     'live_sensor_collection',
     'accident_collection',
     'post_accident_collection',
-    'traffic_signals_collection',            # ← NEW
+    'traffic_signals_collection',
+    'insurance_reports_collection',   # ← Add this
 ]
