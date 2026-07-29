@@ -134,16 +134,29 @@ async def get_insurance_report(
     download: bool = False,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Get insurance report JSON, or download PDF if ?download=true
-    """
     report = await insurance_reports_collection.find_one({"report_id": report_id})
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     
     if download:
         pdf_path = report.get("pdf_url")
+        # If PDF missing, try to regenerate it on the fly
         if not pdf_path or not os.path.exists(pdf_path):
+            print(f"📄 PDF missing for report {report_id}, regenerating...")
+            # Get the accident data
+            accident = await accident_collection.find_one({"_id": ObjectId(report["accident_id"])})
+            if not accident:
+                raise HTTPException(status_code=404, detail="Accident data not found")
+            # Regenerate PDF
+            new_pdf_path = await generate_insurance_pdf(accident, report)
+            # Update database with new path
+            await insurance_reports_collection.update_one(
+                {"report_id": report_id},
+                {"$set": {"pdf_url": new_pdf_path}}
+            )
+            pdf_path = new_pdf_path
+        
+        if not os.path.exists(pdf_path):
             raise HTTPException(status_code=404, detail="PDF not found")
         return FileResponse(pdf_path, media_type="application/pdf", filename=f"insurance_report_{report_id}.pdf")
     
@@ -164,8 +177,22 @@ async def download_insurance_pdf(
     report = await insurance_reports_collection.find_one({"report_id": report_id})
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+    
     pdf_path = report.get("pdf_url")
+    # If PDF missing, regenerate it on the fly
     if not pdf_path or not os.path.exists(pdf_path):
+        print(f"📄 PDF missing for report {report_id}, regenerating...")
+        accident = await accident_collection.find_one({"_id": ObjectId(report["accident_id"])})
+        if not accident:
+            raise HTTPException(status_code=404, detail="Accident data not found")
+        new_pdf_path = await generate_insurance_pdf(accident, report)
+        await insurance_reports_collection.update_one(
+            {"report_id": report_id},
+            {"$set": {"pdf_url": new_pdf_path}}
+        )
+        pdf_path = new_pdf_path
+    
+    if not os.path.exists(pdf_path):
         raise HTTPException(status_code=404, detail="PDF not found")
     return FileResponse(pdf_path, media_type="application/pdf", filename=f"insurance_report_{report_id}.pdf")
 
