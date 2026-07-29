@@ -293,7 +293,8 @@ const Dashboard = () => {
 
   const handleMarkerClick = (item, type) => {
     console.log("🖱️ Marker clicked:", item, type);
-    setSelectedMarker({ ...item, type });
+    // Ensure id is set for accident markers
+    setSelectedMarker({ ...item, type, id: item._id });
     setMapCenter([item.latitude, item.longitude]);
   };
 
@@ -325,7 +326,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      {/* Header */}
+      {/* Header - unchanged */}
       <header className="bg-black/30 backdrop-blur-md border-b border-gray-700 sticky top-0 z-50">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
@@ -444,6 +445,7 @@ const Dashboard = () => {
       <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* ... same as before ... */}
           <div className="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700 hover:shadow-xl transition">
             <div className="flex justify-between items-start">
               <div>
@@ -552,40 +554,50 @@ const Dashboard = () => {
 
                     {/* Post‑accident status (only for accident markers) */}
                     {selectedMarker.type === 'accident' && (
-                      <div className="mt-3 p-2 bg-red-900/50 border border-red-700 rounded-lg">
-                        <p className="text-xs font-semibold text-red-300 flex items-center">
-                          <MdEmergency className="mr-1" /> Post‑Accident Monitoring
-                        </p>
-                        {postAccidentLoading ? (
-                          <p className="text-xs text-gray-400">Loading latest status...</p>
-                        ) : postAccidentLatest ? (
-                          <div className="mt-1 text-xs text-gray-300">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-gray-400">Human:</span>
-                              <span className={postAccidentLatest.human_presence ? 'text-green-400' : 'text-red-400'}>
-                                {postAccidentLatest.human_presence ? '✅ Present' : '❌ Absent'}
-                              </span>
+                      <>
+                        <div className="mt-3 p-2 bg-red-900/50 border border-red-700 rounded-lg">
+                          <p className="text-xs font-semibold text-red-300 flex items-center">
+                            <MdEmergency className="mr-1" /> Post‑Accident Monitoring
+                          </p>
+                          {postAccidentLoading ? (
+                            <p className="text-xs text-gray-400">Loading latest status...</p>
+                          ) : postAccidentLatest ? (
+                            <div className="mt-1 text-xs text-gray-300">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-gray-400">Human:</span>
+                                <span className={postAccidentLatest.human_presence ? 'text-green-400' : 'text-red-400'}>
+                                  {postAccidentLatest.human_presence ? '✅ Present' : '❌ Absent'}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-gray-400">Breathing:</span>
+                                <span className={postAccidentLatest.breathing_detected ? 'text-green-400' : 'text-red-400'}>
+                                  {postAccidentLatest.breathing_detected ? '✅ Yes' : '❌ No'}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-gray-400">Fire:</span>
+                                <span className={postAccidentLatest.fire_detected ? 'text-red-400' : 'text-green-400'}>
+                                  {postAccidentLatest.fire_detected ? '🔥 Detected' : '✅ None'}
+                                </span>
+                              </div>
+                              <p className="text-gray-500 mt-1">
+                                Last update: {new Date(postAccidentLatest.timestamp).toLocaleTimeString()}
+                              </p>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-gray-400">Breathing:</span>
-                              <span className={postAccidentLatest.breathing_detected ? 'text-green-400' : 'text-red-400'}>
-                                {postAccidentLatest.breathing_detected ? '✅ Yes' : '❌ No'}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-gray-400">Fire:</span>
-                              <span className={postAccidentLatest.fire_detected ? 'text-red-400' : 'text-green-400'}>
-                                {postAccidentLatest.fire_detected ? '🔥 Detected' : '✅ None'}
-                              </span>
-                            </div>
-                            <p className="text-gray-500 mt-1">
-                              Last update: {new Date(postAccidentLatest.timestamp).toLocaleTimeString()}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-gray-500">No post‑accident data yet</p>
-                        )}
-                      </div>
+                          ) : (
+                            <p className="text-xs text-gray-500">No post‑accident data yet</p>
+                          )}
+                        </div>
+
+                        {/* 🔹 NEW: View Full Report Button */}
+                        <button
+                          onClick={() => navigate(`/accident/${selectedMarker.id}`)}
+                          className="mt-3 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition"
+                        >
+                          View Full Report
+                        </button>
+                      </>
                     )}
 
                     {geocodingLoading ? (
@@ -670,7 +682,7 @@ const Dashboard = () => {
                     className="p-3 bg-gray-700 rounded-lg border border-gray-600 hover:shadow cursor-pointer transition"
                     onClick={() => {
                       setMapCenter([incident.lat, incident.lng]);
-                      setSelectedMarker({ ...incident, type: 'accident' });
+                      setSelectedMarker({ ...incident, type: 'accident', id: incident.id });
                     }}
                   >
                     <div className="flex items-start space-x-3">

@@ -143,8 +143,12 @@ const AccidentReports = () => {
                     >
                       <FaEye className="mr-2" /> View Details
                     </button>
-                    <button className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition flex items-center">
-                      <FaDownload className="mr-2" /> Export Report
+                    {/* 🔹 NEW: View Report button navigates to detail page */}
+                    <button
+                      onClick={() => navigate(`/accident/${acc._id}`)}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition flex items-center"
+                    >
+                      <FaFilePdf className="mr-2" /> View Report
                     </button>
                   </div>
                 </div>
@@ -175,7 +179,14 @@ const AccidentReports = () => {
                 <p><span className="font-semibold">Police Notified:</span> {selectedAccident.police_notified ? 'Yes' : 'No'}</p>
               </div>
               <div className="mt-6 flex justify-end">
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                {/* 🔹 NEW: Navigate to detail page for insurance report generation */}
+                <button
+                  onClick={() => {
+                    setSelectedAccident(null);
+                    navigate(`/accident/${selectedAccident._id}`);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
                   Generate Insurance Report
                 </button>
               </div>

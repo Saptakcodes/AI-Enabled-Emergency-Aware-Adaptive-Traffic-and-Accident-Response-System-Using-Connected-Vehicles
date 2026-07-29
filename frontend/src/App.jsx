@@ -11,6 +11,8 @@ import AccidentReports from './pages/AccidentReports';
 import ClaimDevice from './pages/ClaimDevice';
 import TrafficManagement from './pages/TrafficManagement';
 
+import AccidentDetailPage from './pages/AccidentDetailPage';
+
 function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -41,6 +43,7 @@ function App() {
         <Route path="/accident-reports" element={<AccidentReports />} />
         <Route path="/claim-device" element={<ClaimDevice />} />
         <Route path="/traffic-management" element={<TrafficManagement />} />
+        <Route path="/accident/:id" element={<AccidentDetailPage />} />
       </Routes>
       <PWAInstallPrompt />
     </div>
