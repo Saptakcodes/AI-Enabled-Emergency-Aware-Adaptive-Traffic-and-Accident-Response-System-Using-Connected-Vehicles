@@ -12,7 +12,7 @@ from services.summary_generator import generate_accident_summary      # ← Chan
 from services.timeline_builder import build_timeline                  # ← Changed
 from services.checklist_builder import build_checklist                # ← Changed
 from services.pdf_generator import generate_insurance_pdf             # ← Changed
-from utils.qr_generator import generate_qr_code                      # ← Changed
+from services.qr_generator import generate_qr_code                    # ← Changed
 from auth import get_current_user, require_roles
 
 router = APIRouter(prefix="/insurance", tags=["insurance"])
