@@ -14,6 +14,7 @@ from services.checklist_builder import build_checklist
 from services.pdf_generator import generate_insurance_pdf
 from services.qr_generator import generate_qr_code
 from auth import get_current_user, require_roles
+import re
 
 router = APIRouter(prefix="/insurance", tags=["insurance"])
 
@@ -34,7 +35,6 @@ async def generate_report_background(accident_id: str, user_email: str):
         if not accident:
             return
 
-        # ---- LOG ACCIDENT DATA ----
         print(f"🔍 Accident ID: {accident_id}")
         print(f"🔍 Accident blackbox_id: {accident.get('blackbox_id')}")
         print(f"👤 User email: {user_email}")
@@ -66,17 +66,19 @@ async def generate_report_background(accident_id: str, user_email: str):
             else:
                 print(f"⚠️ No device found for blackbox_id: {blackbox_id}")
 
-        # Fallback: if no device found, try user's claimed device
+        # Fallback: try user's claimed device (case‑insensitive)
         if not device and user:
-            user_device = await devices_collection.find_one({"user_id": user_email})
+            # Case‑insensitive search using regex
+            user_device = await devices_collection.find_one({
+                "user_id": {"$regex": f"^{re.escape(user_email)}$", "$options": "i"}
+            })
             if user_device:
                 vehicle_number = user_device.get("vehicle_number", "N/A")
                 vehicle_type = user_device.get("vehicle_type", "N/A")
-                print(f"✅ Device found via user email: {vehicle_number} ({vehicle_type})")
+                print(f"✅ Device found via user email (case‑insensitive): {vehicle_number} ({vehicle_type})")
             else:
                 print(f"⚠️ No device claimed by user: {user_email}")
 
-        # ---- Log final values ----
         print(f"📄 Final vehicle_number: {vehicle_number}, vehicle_type: {vehicle_type}")
 
         # ---- Add vehicle details to accident for summary ----
@@ -96,7 +98,7 @@ async def generate_report_background(accident_id: str, user_email: str):
             formatted_timeline.append(event_copy)
 
         checklist = build_checklist(accident, report_generated=True)
-        summary = generate_accident_summary(accident)  # Now uses vehicle_number & vehicle_type from accident
+        summary = generate_accident_summary(accident)
 
         g = accident.get("acceleration_g", 0)
         tilt = accident.get("tilt_degree", 0)
