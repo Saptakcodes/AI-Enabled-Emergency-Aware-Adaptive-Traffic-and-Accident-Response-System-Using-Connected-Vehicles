@@ -1,15 +1,13 @@
-from reportlab.lib.units import cm
-from reportlab.pdfgen import canvas
+# utils/watermark.py
+from io import BytesIO
 from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from PyPDF2 import PdfReader, PdfWriter
 
 def add_watermark(input_pdf: str, output_pdf: str):
     """
     Add a diagonal "CONFIDENTIAL" watermark to each page of a PDF.
     """
-    from reportlab.pdfbase import pdfutils
-    from reportlab.pdfgen import canvas
-    from PyPDF2 import PdfReader, PdfWriter
-
     reader = PdfReader(input_pdf)
     writer = PdfWriter()
 

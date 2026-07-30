@@ -9,8 +9,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.enums import TA_CENTER
-# from utils.qr_generator import generate_qr_code   # not used here
-# We don't need to import from utils in this file; we only use it in insurance router.
+from ..utils.watermark import add_watermark  # Import watermark function
 
 async def generate_insurance_pdf(accident_data: dict, report_data: dict) -> str:
     """
@@ -114,4 +113,10 @@ async def generate_insurance_pdf(accident_data: dict, report_data: dict) -> str:
 
     # Build PDF
     doc.build(story)
+
+    # Add watermark
+    temp_watermarked = filepath.replace('.pdf', '_watermarked.pdf')
+    add_watermark(filepath, temp_watermarked)
+    os.replace(temp_watermarked, filepath)  # Replace original with watermarked
+
     return filepath
