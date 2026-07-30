@@ -9,7 +9,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.enums import TA_CENTER
-from ..utils.watermark import add_watermark  # Import watermark function
+from utils.watermark import add_watermark  # Changed from relative to absolute import
 
 async def generate_insurance_pdf(accident_data: dict, report_data: dict) -> str:
     """

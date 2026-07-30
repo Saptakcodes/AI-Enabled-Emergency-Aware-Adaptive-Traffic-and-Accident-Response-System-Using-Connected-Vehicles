@@ -12,7 +12,6 @@ def add_watermark(input_pdf: str, output_pdf: str):
     writer = PdfWriter()
 
     for page in reader.pages:
-        # Create a new PDF with watermark
         packet = BytesIO()
         c = canvas.Canvas(packet, pagesize=A4)
         c.setFont("Helvetica-Bold", 50)
