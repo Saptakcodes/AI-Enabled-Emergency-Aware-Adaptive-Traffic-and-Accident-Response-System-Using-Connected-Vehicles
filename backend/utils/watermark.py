@@ -6,7 +6,7 @@ from PyPDF2 import PdfReader, PdfWriter
 
 def add_watermark(input_pdf: str, output_pdf: str):
     """
-    Add a diagonal "CONFIDENTIAL" watermark to each page of a PDF.
+    Add a diagonal "ALERT - CONFIDENTIAL" watermark to each page of a PDF.
     """
     reader = PdfReader(input_pdf)
     writer = PdfWriter()
