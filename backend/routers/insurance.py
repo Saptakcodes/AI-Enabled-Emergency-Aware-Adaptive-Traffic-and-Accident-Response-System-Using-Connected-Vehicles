@@ -33,10 +33,10 @@ async def generate_report_background(accident_id: str, user_email: str):
     try:
         accident = await accident_collection.find_one({"_id": ObjectId(accident_id)})
         if not accident:
+            print(f"❌ Accident not found: {accident_id}")
             return
 
         print(f"🔍 Accident ID: {accident_id}")
-        print(f"🔍 Accident blackbox_id: {accident.get('blackbox_id')}")
         print(f"👤 User email: {user_email}")
 
         # ---- Fetch user details ----
@@ -50,32 +50,21 @@ async def generate_report_background(accident_id: str, user_email: str):
             print(f"❌ User not found for email: {user_email}")
             owner_name = driver_name = emergency_contact = "N/A"
 
-        # ---- Fetch device details ----
-        blackbox_id = accident.get("blackbox_id")
-        device = None
+        # ---- Fetch user's claimed device (using email, case‑insensitive) ----
         vehicle_number = "N/A"
         vehicle_type = "N/A"
-
-        # First try: use blackbox_id from accident
-        if blackbox_id:
-            device = await devices_collection.find_one({"blackbox_id": blackbox_id})
-            if device:
-                vehicle_number = device.get("vehicle_number", "N/A")
-                vehicle_type = device.get("vehicle_type", "N/A")
-                print(f"✅ Device found via blackbox_id: {vehicle_number} ({vehicle_type})")
-            else:
-                print(f"⚠️ No device found for blackbox_id: {blackbox_id}")
-
-        # Fallback: try user's claimed device (case‑insensitive)
-        if not device and user:
-            # Case‑insensitive search using regex
-            user_device = await devices_collection.find_one({
-                "user_id": {"$regex": f"^{re.escape(user_email)}$", "$options": "i"}
-            })
+        if user:
+            # Try exact match first
+            user_device = await devices_collection.find_one({"user_id": user_email})
+            if not user_device:
+                # Try case‑insensitive regex
+                user_device = await devices_collection.find_one({
+                    "user_id": {"$regex": f"^{re.escape(user_email)}$", "$options": "i"}
+                })
             if user_device:
                 vehicle_number = user_device.get("vehicle_number", "N/A")
                 vehicle_type = user_device.get("vehicle_type", "N/A")
-                print(f"✅ Device found via user email (case‑insensitive): {vehicle_number} ({vehicle_type})")
+                print(f"✅ Device found for user: {vehicle_number} ({vehicle_type})")
             else:
                 print(f"⚠️ No device claimed by user: {user_email}")
 

@@ -1,3 +1,4 @@
+# services/summary_generator.py
 from datetime import datetime
 from typing import Dict, Any, Optional
 
