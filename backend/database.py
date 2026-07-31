@@ -86,6 +86,8 @@ try:
     traffic_signals_collection = blackbox_db["traffic_signals"]   # ← NEW
     # In BLACKBOX DATABASE section
     insurance_reports_collection = blackbox_db["insurance_reports"]
+    #esp part
+    esp_devices_collection = blackbox_db["esp_devices"]
 
     print("✅ Blackbox DB Connected")
     print("✅ Collections:")
@@ -93,7 +95,8 @@ try:
     print("   - live_sensor_data")
     print("   - accident_records")
     print("   - post_accident_reports")
-    print("   - traffic_signals")                                 # ← NEW
+    print("   - traffic_signals")              
+    print("   - esp_devices")                   
 
 except Exception as e:
     print(f"⚠️ Blackbox DB warning: {e}")
@@ -110,5 +113,6 @@ __all__ = [
     'accident_collection',
     'post_accident_collection',
     'traffic_signals_collection',
-    'insurance_reports_collection',   # ← Add this
+    'insurance_reports_collection',
+    'esp_devices_collection',   
 ]

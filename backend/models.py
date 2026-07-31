@@ -56,26 +56,11 @@ class PostAccidentReport(BaseModel):
     fire_detected: bool
     timestamp: Optional[datetime] = None
 
-class TrafficSignal(BaseModel):
-    signal_id: str
-    location: dict
-    location_name: Optional[str] = None
-    current_state: Literal["red", "yellow", "green"]
-    last_updated: Optional[datetime] = None
-    override_active: bool = False
-    override_expiry: Optional[datetime] = None
-    preempted_by: Optional[str] = None
-    preemption_end_time: Optional[datetime] = None
-    base_cycle_time: int = 30
-    current_cycle_time: int = 30
 
 class SignalOverride(BaseModel):
     new_state: Literal["red", "yellow", "green"]
     duration_seconds: Optional[int] = None
 
-# =========================
-# INSURANCE REPORT MODELS
-# =========================
 class InsuranceReport(BaseModel):
     report_id: str
     accident_id: str
@@ -118,3 +103,19 @@ class InsuranceReport(BaseModel):
     report_version: str = "1.0"
     pdf_url: Optional[str] = None
     qr_code_data: Optional[str] = None
+
+# backend/models.py (partial – keep only one TrafficSignal)
+class TrafficSignal(BaseModel):
+    signal_id: str
+    location: dict
+    location_name: Optional[str] = None
+    current_state: Literal["red", "yellow", "green"]
+    last_updated: Optional[datetime] = None
+    override_active: bool = False
+    override_expiry: Optional[datetime] = None
+    preempted_by: Optional[str] = None
+    preemption_end_time: Optional[datetime] = None
+    base_cycle_time: int = 30
+    current_cycle_time: int = 30
+    hardware: bool = False          # True if controlled by ESP32
+    esp_ip: Optional[str] = None    # IP address of the ESP32 controlling it

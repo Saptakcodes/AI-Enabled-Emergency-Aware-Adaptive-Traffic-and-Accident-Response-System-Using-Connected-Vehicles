@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, Response, HTTPException
 from auth import router as auth_router
 from routers.insurance import router as insurance_router
+from esp_control import router as esp_router
 
 from database import (
     live_sensor_collection,
@@ -17,7 +18,7 @@ from models import (
 from datetime import datetime, timedelta
 import asyncio
 import math
-from bson import ObjectId  # ← NEW
+from bson import ObjectId
 
 from geocoding import router as geocoding_router
 from devices import router as devices_router
@@ -63,6 +64,7 @@ app.include_router(geocoding_router)
 app.include_router(devices_router)
 app.include_router(signals_router)
 app.include_router(insurance_router)
+app.include_router(esp_router)
 
 # Conditionally include development routes
 if os.getenv("ENV") == "development":
@@ -243,6 +245,10 @@ async def traffic_signal_loop():
             }).to_list(200)
 
             for sig in signals:
+                # --- Skip hardware-controlled signals ---
+                if sig.get("hardware"):
+                    continue
+
                 sig_id = sig["_id"]
                 sig_lon, sig_lat = sig["location"]["coordinates"]
 
@@ -269,7 +275,7 @@ async def traffic_signal_loop():
                         {"$set": {"current_state": new_state, "last_updated": now}}
                     )
 
-            # --- Emergency vehicle preemption ---
+            # --- Emergency vehicle preemption (software signals only) ---
             for v in vehicles:
                 # Get device details to check vehicle type
                 device = await devices_collection.find_one({"blackbox_id": v["blackbox_id"]})
@@ -277,6 +283,10 @@ async def traffic_signal_loop():
                     continue
 
                 for sig in signals:
+                    # Skip hardware signals for preemption
+                    if sig.get("hardware"):
+                        continue
+
                     sig_lon, sig_lat = sig["location"]["coordinates"]
                     dist = haversine(v["latitude"], v["longitude"], sig_lat, sig_lon)
                     if dist < 300:  # preemption radius (metres)
