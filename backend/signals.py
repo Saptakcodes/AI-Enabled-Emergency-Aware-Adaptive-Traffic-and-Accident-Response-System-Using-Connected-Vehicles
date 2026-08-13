@@ -1,11 +1,10 @@
 # backend/signals.py
 from fastapi import APIRouter, HTTPException, Depends
-from database import traffic_signals_collection, esp_devices_collection
+from database import traffic_signals_collection
 from models import SignalOverride
 from auth import get_current_user, require_roles
 from datetime import datetime, timedelta
-import aiohttp
-import asyncio
+from esp_control import send_command_to_esp, ESPCommandRequest
 
 router = APIRouter(prefix="/signals", tags=["traffic signals"])
 
@@ -17,7 +16,6 @@ async def get_all_signals():
         s["_id"] = str(s["_id"])
     return signals
 
-# SINGLE override endpoint with hardware integration
 @router.put("/{signal_id}/override")
 async def override_signal(
     signal_id: str,
@@ -44,38 +42,42 @@ async def override_signal(
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Signal not found")
 
-    # 2. Send command to hardware if this signal is hardware-controlled
+    # 2. If this is a hardware signal, forward the command via the existing esp_control function
     signal = await traffic_signals_collection.find_one({"signal_id": signal_id})
     if signal and signal.get("hardware"):
-        esp_ip = signal.get("esp_ip")
-        if esp_ip:
-            try:
-                payload = {
-                    "color": override.new_state.upper(),
-                    "duration": override.duration_seconds or 10
-                }
-                async with aiohttp.ClientSession() as session:
-                    await session.post(
-                        f"http://{esp_ip}/override",
-                        json=payload,
-                        timeout=3
-                    )
-                print(f"✅ Hardware override sent to {signal_id} at {esp_ip}")
-            except Exception as e:
-                print(f"⚠️ Failed to send hardware command: {e}")
-                # Still return success to the user, but log the failure
+        print(f"🔧 Hardware signal {signal_id} – forwarding to ESP32")
+        cmd = ESPCommandRequest(
+            signal_id=signal_id,
+            color=override.new_state,
+            duration=override.duration_seconds or 10
+        )
+        try:
+            result_esp = await send_command_to_esp(cmd, current_user)
+            print(f"✅ Hardware command sent successfully: {result_esp}")
+        except Exception as e:
+            print(f"❌ Failed to send hardware command: {e}")
+    else:
+        print(f"ℹ️ Software signal {signal_id} – no hardware action")
 
     return {"message": "Signal overridden"}
 
+# ========== NEW ENDPOINT FOR ESP32 STATE SYNC ==========
 @router.post("/update")
 async def update_signal_status(data: dict):
-    """Allow hardware to report current status."""
+    """
+    Endpoint called by the ESP32 to push its current state.
+    Converts the state to lowercase to match the database convention.
+    """
     signal_id = data.get("signal_id")
     state = data.get("state")
     if not signal_id or not state:
         raise HTTPException(status_code=400, detail="Missing signal_id or state")
+    
+    # Convert to lowercase (e.g., "GREEN" → "green")
+    state_lower = state.lower()
+    
     await traffic_signals_collection.update_one(
         {"signal_id": signal_id},
-        {"$set": {"current_state": state, "last_updated": datetime.utcnow()}}
+        {"$set": {"current_state": state_lower, "last_updated": datetime.utcnow()}}
     )
     return {"message": "Status updated"}
