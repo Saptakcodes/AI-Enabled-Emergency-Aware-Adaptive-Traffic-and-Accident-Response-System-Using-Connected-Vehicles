@@ -4,70 +4,80 @@ import aiohttp
 from fastapi import APIRouter, HTTPException
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
-import asyncio
 from math import radians, sin, cos, sqrt, atan2
 
 router = APIRouter(prefix="/geocode", tags=["geocoding"])
 
-# ============= NOMINATIM (Reverse Geocode) =============
-NOMINATIM_URL = "https://nominatim.openstreetmap.org"
-USER_AGENT = "AlertSystem/1.0 (contact: your-email@example.com)"
-_last_request_time = 0
-_request_lock = asyncio.Lock()
+# ============= GOOGLE GEOCODING (Reverse Geocode) =============
+VITE_GOOGLE_MAPS_API_KEY = os.getenv("VITE_GOOGLE_MAPS_API_KEY")
+
+# Simple cache for reverse geocode results (expires after 1 hour)
 _cache = {}
 _CACHE_TTL = timedelta(hours=1)
 
-async def rate_limited_request(url: str, params: dict) -> dict:
-    global _last_request_time
-    async with _request_lock:
-        now = asyncio.get_event_loop().time()
-        time_since_last = now - _last_request_time
-        if time_since_last < 1.0:
-            await asyncio.sleep(1.0 - time_since_last)
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params, headers={"User-Agent": USER_AGENT}) as resp:
-                _last_request_time = asyncio.get_event_loop().time()
-                if resp.status != 200:
-                    raise HTTPException(status_code=resp.status, detail="Geocoding service error")
-                return await resp.json()
-
 @router.get("/reverse")
 async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
+    """
+    Get address details from coordinates using Google Geocoding API.
+    """
+    if not VITE_GOOGLE_MAPS_API_KEY:
+        raise HTTPException(status_code=500, detail="Google API key not configured")
+
     cache_key = f"{lat},{lon}"
+    # Check cache first
     if cache_key in _cache:
         cached_result, cached_time = _cache[cache_key]
         if datetime.utcnow() - cached_time < _CACHE_TTL:
             return cached_result
 
+    url = "https://maps.googleapis.com/maps/api/geocode/json"
     params = {
-        "lat": lat,
-        "lon": lon,
-        "format": "json",
-        "addressdetails": 1,
-        "zoom": 18,
+        "latlng": f"{lat},{lon}",
+        "key": VITE_GOOGLE_MAPS_API_KEY,
     }
-    data = await rate_limited_request(f"{NOMINATIM_URL}/reverse", params)
-    if not data:
-        raise HTTPException(status_code=404, detail="No address found")
 
-    address = data.get("address", {})
-    result = {
-        "display_name": data.get("display_name", ""),
-        "road": address.get("road"),
-        "city": address.get("city") or address.get("town") or address.get("village"),
-        "state": address.get("state"),
-        "country": address.get("country"),
-        "postcode": address.get("postcode"),
-        "neighbourhood": address.get("neighbourhood"),
-        "suburb": address.get("suburb"),
-    }
-    _cache[cache_key] = (result, datetime.utcnow())
-    return result
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(url, params=params, timeout=10) as resp:
+                if resp.status != 200:
+                    raise HTTPException(status_code=resp.status, detail="Geocoding service error")
+                data = await resp.json()
+                if data.get("status") != "OK":
+                    raise HTTPException(status_code=404, detail="No address found")
+
+                # Parse the first result
+                result = data.get("results", [])[0]
+                address = result.get("address_components", [])
+                
+                # Extract components
+                def get_component(types):
+                    for comp in address:
+                        if any(t in types for t in comp.get("types", [])):
+                            return comp.get("long_name")
+                    return None
+
+                formatted_result = {
+                    "display_name": result.get("formatted_address", ""),
+                    "road": get_component(["route"]),
+                    "city": get_component(["locality", "sublocality"]),
+                    "state": get_component(["administrative_area_level_1"]),
+                    "country": get_component(["country"]),
+                    "postcode": get_component(["postal_code"]),
+                    "neighbourhood": get_component(["neighborhood"]),
+                    "suburb": get_component(["sublocality"]),
+                    "latitude": result["geometry"]["location"]["lat"],
+                    "longitude": result["geometry"]["location"]["lng"],
+                }
+
+                # Store in cache
+                _cache[cache_key] = (formatted_result, datetime.utcnow())
+                return formatted_result
+
+        except Exception as e:
+            print(f"Google Geocoding error: {e}")
+            raise HTTPException(status_code=500, detail=f"Geocoding failed: {str(e)}")
 
 # ============= GOOGLE PLACES (Nearby Multi) =============
-# ✅ Changed variable name to match your .env
-VITE_GOOGLE_MAPS_API_KEY = os.getenv("VITE_GOOGLE_MAPS_API_KEY")
-
 @router.get("/nearby-multi")
 async def nearby_places_multi_google(
     lat: float,
