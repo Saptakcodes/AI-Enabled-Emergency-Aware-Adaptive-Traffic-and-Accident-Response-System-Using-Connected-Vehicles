@@ -22,7 +22,8 @@ const Dashboard = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [mapViewMode, setMapViewMode] = useState('interactive');
   const [selectedMarker, setSelectedMarker] = useState(null);
-  const [mapCenter, setMapCenter] = useState([22.5726, 88.3639]);
+  // ✅ Initialize mapCenter to null – avoids showing default location
+  const [mapCenter, setMapCenter] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
   // Real data states
@@ -128,8 +129,10 @@ const Dashboard = () => {
     setNotifications(newNotifications.slice(0, 5));
   }, [vehicles, accidents]);
 
-  // Update map center to first valid vehicle
+  // ✅ Update map center to first valid vehicle or accident
   useEffect(() => {
+    // Only set if vehicles or accidents exist
+    if (vehicles.length === 0 && accidents.length === 0) return;
     const validVehicle = vehicles.find(v => v.latitude !== 0 && v.longitude !== 0);
     if (validVehicle) {
       setMapCenter([validVehicle.latitude, validVehicle.longitude]);
@@ -137,6 +140,9 @@ const Dashboard = () => {
       const validAccident = accidents.find(a => a.latitude !== 0 && a.longitude !== 0);
       if (validAccident) {
         setMapCenter([validAccident.latitude, validAccident.longitude]);
+      } else {
+        // Fallback if all coordinates are zero (should not happen often)
+        setMapCenter([22.5726, 88.3639]);
       }
     }
   }, [vehicles, accidents]);
@@ -296,6 +302,22 @@ const Dashboard = () => {
     // Ensure id is set for accident markers
     setSelectedMarker({ ...item, type, id: item._id });
     setMapCenter([item.latitude, item.longitude]);
+  };
+
+  // ✅ Function to center on first device (vehicle or accident)
+  const centerOnDevice = () => {
+    const validVehicle = vehicles.find(v => v.latitude !== 0 && v.longitude !== 0);
+    if (validVehicle) {
+      setMapCenter([validVehicle.latitude, validVehicle.longitude]);
+    } else {
+      const validAccident = accidents.find(a => a.latitude !== 0 && a.longitude !== 0);
+      if (validAccident) {
+        setMapCenter([validAccident.latitude, validAccident.longitude]);
+      } else {
+        // fallback
+        setMapCenter([22.5726, 88.3639]);
+      }
+    }
   };
 
   const handleLogout = () => {
@@ -509,6 +531,14 @@ const Dashboard = () => {
                 LIVE MAP
               </h2>
               <div className="flex space-x-2">
+                {/* ✅ New Center on Device button */}
+                <button
+                  onClick={centerOnDevice}
+                  className="px-3 py-1 rounded-lg text-sm bg-green-600 text-white hover:bg-green-700 transition"
+                  title="Center map on the first device"
+                >
+                  <FaCar className="inline mr-1" /> Center on Device
+                </button>
                 <button
                   onClick={() => setMapViewMode('interactive')}
                   className={`px-3 py-1 rounded-lg text-sm ${
@@ -532,13 +562,19 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="relative h-96">
-              <LiveMap
-                vehicles={vehicles}
-                accidents={accidents}
-                center={mapCenter}
-                onMarkerClick={handleMarkerClick}
-                mapType={mapViewMode}
-              />
+              {mapCenter ? (
+                <LiveMap
+                  vehicles={vehicles}
+                  accidents={accidents}
+                  center={mapCenter}
+                  onMarkerClick={handleMarkerClick}
+                  mapType={mapViewMode}
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center bg-gray-700 rounded-lg">
+                  <p className="text-gray-400">Waiting for device data...</p>
+                </div>
+              )}
             </div>
             {/* Rich Marker Details Panel with fire stations and post-accident */}
             {selectedMarker && (
