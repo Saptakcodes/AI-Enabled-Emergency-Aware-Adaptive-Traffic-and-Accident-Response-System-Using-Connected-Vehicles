@@ -19,12 +19,13 @@ _CACHE_TTL = timedelta(hours=1)
 async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
     """
     Get address details from coordinates using Google Geocoding API.
+    Returns a 200 with address data or a "not found" placeholder.
     """
     if not VITE_GOOGLE_MAPS_API_KEY:
         raise HTTPException(status_code=500, detail="Google API key not configured")
 
     cache_key = f"{lat},{lon}"
-    # Check cache first
+    # Check cache
     if cache_key in _cache:
         cached_result, cached_time = _cache[cache_key]
         if datetime.utcnow() - cached_time < _CACHE_TTL:
@@ -42,8 +43,26 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
                 if resp.status != 200:
                     raise HTTPException(status_code=resp.status, detail="Geocoding service error")
                 data = await resp.json()
+                
+                # Handle ZERO_RESULTS gracefully
+                if data.get("status") == "ZERO_RESULTS":
+                    result = {
+                        "display_name": "No address found",
+                        "road": None,
+                        "city": None,
+                        "state": None,
+                        "country": None,
+                        "postcode": None,
+                        "neighbourhood": None,
+                        "suburb": None,
+                        "latitude": lat,
+                        "longitude": lon,
+                    }
+                    _cache[cache_key] = (result, datetime.utcnow())
+                    return result
+
                 if data.get("status") != "OK":
-                    raise HTTPException(status_code=404, detail="No address found")
+                    raise HTTPException(status_code=404, detail=f"Geocoding API error: {data.get('status')}")
 
                 # Parse the first result
                 result = data.get("results", [])[0]
@@ -75,7 +94,19 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
 
         except Exception as e:
             print(f"Google Geocoding error: {e}")
-            raise HTTPException(status_code=500, detail=f"Geocoding failed: {str(e)}")
+            # Return a placeholder instead of throwing 500
+            return {
+                "display_name": "Geocoding service unavailable",
+                "road": None,
+                "city": None,
+                "state": None,
+                "country": None,
+                "postcode": None,
+                "neighbourhood": None,
+                "suburb": None,
+                "latitude": lat,
+                "longitude": lon,
+            }
 
 # ============= GOOGLE PLACES (Nearby Multi) =============
 @router.get("/nearby-multi")
