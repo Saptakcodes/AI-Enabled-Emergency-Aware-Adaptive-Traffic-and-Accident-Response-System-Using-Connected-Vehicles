@@ -19,13 +19,11 @@ _CACHE_TTL = timedelta(hours=1)
 async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
     """
     Get address details from coordinates using Google Geocoding API.
-    Returns a 200 with address data or a "not found" placeholder.
     """
     if not VITE_GOOGLE_MAPS_API_KEY:
         raise HTTPException(status_code=500, detail="Google API key not configured")
 
     cache_key = f"{lat},{lon}"
-    # Check cache
     if cache_key in _cache:
         cached_result, cached_time = _cache[cache_key]
         if datetime.utcnow() - cached_time < _CACHE_TTL:
@@ -44,7 +42,6 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
                     raise HTTPException(status_code=resp.status, detail="Geocoding service error")
                 data = await resp.json()
                 
-                # Handle ZERO_RESULTS gracefully
                 if data.get("status") == "ZERO_RESULTS":
                     result = {
                         "display_name": "No address found",
@@ -64,11 +61,9 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
                 if data.get("status") != "OK":
                     raise HTTPException(status_code=404, detail=f"Geocoding API error: {data.get('status')}")
 
-                # Parse the first result
                 result = data.get("results", [])[0]
                 address = result.get("address_components", [])
                 
-                # Extract components
                 def get_component(types):
                     for comp in address:
                         if any(t in types for t in comp.get("types", [])):
@@ -87,14 +82,11 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
                     "latitude": result["geometry"]["location"]["lat"],
                     "longitude": result["geometry"]["location"]["lng"],
                 }
-
-                # Store in cache
                 _cache[cache_key] = (formatted_result, datetime.utcnow())
                 return formatted_result
 
         except Exception as e:
             print(f"Google Geocoding error: {e}")
-            # Return a placeholder instead of throwing 500
             return {
                 "display_name": "Geocoding service unavailable",
                 "road": None,
@@ -108,16 +100,18 @@ async def reverse_geocode(lat: float, lon: float) -> Dict[str, Any]:
                 "longitude": lon,
             }
 
-# ============= GOOGLE PLACES (Nearby Multi) =============
+# ============= GOOGLE PLACES (Nearby Multi) with Radius Fallback =============
 @router.get("/nearby-multi")
 async def nearby_places_multi_google(
     lat: float,
     lon: float,
     types: str = "hospital,police,fire_station",
-    radius: int = 5000
+    radius: int = 5000  # initial radius in meters
 ) -> Dict[str, List[Dict[str, Any]]]:
     """
     Find nearby places using Google Places API.
+    For hospitals, filters only those with 'hospital' in types.
+    If no results, increases radius by 5 km up to 20 km.
     """
     if not VITE_GOOGLE_MAPS_API_KEY:
         raise HTTPException(status_code=500, detail="Google API key not configured")
@@ -125,25 +119,50 @@ async def nearby_places_multi_google(
     type_list = [t.strip() for t in types.split(",")]
     results = {t: [] for t in type_list}
 
+    # Define max radius (20 km) and step (5 km)
+    MAX_RADIUS = 20000  # 20 km
+    STEP = 5000         # 5 km
+
     async with aiohttp.ClientSession() as session:
         for place_type in type_list:
-            url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
-            params = {
-                "location": f"{lat},{lon}",
-                "radius": radius,
-                "type": place_type,
-                "key": VITE_GOOGLE_MAPS_API_KEY,
-            }
-            try:
-                async with session.get(url, params=params, timeout=10) as resp:
-                    if resp.status != 200:
-                        continue
-                    data = await resp.json()
-                    if data.get("status") == "OK":
+            current_radius = radius
+            found = False
+            attempts = 0
+
+            while not found and current_radius <= MAX_RADIUS:
+                attempts += 1
+                url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+                params = {
+                    "location": f"{lat},{lon}",
+                    "radius": current_radius,
+                    "type": place_type,
+                    "key": VITE_GOOGLE_MAPS_API_KEY,
+                }
+                try:
+                    async with session.get(url, params=params, timeout=10) as resp:
+                        if resp.status != 200:
+                            break
+                        data = await resp.json()
+                        if data.get("status") != "OK":
+                            # If no results, increase radius and try again
+                            if data.get("status") == "ZERO_RESULTS":
+                                current_radius += STEP
+                                continue
+                            else:
+                                # Other error (e.g., REQUEST_DENIED)
+                                break
+
+                        # Filter results based on place_type
+                        filtered = []
                         for p in data.get("results", []):
+                            # For hospitals, only include places that have "hospital" in their types
+                            if place_type == "hospital":
+                                p_types = p.get("types", [])
+                                if "hospital" not in p_types:
+                                    continue  # skip clinics, doctors, etc.
+                            # For police and fire_station, accept all (they are more specific)
                             p_lat = p["geometry"]["location"]["lat"]
                             p_lon = p["geometry"]["location"]["lng"]
-                            # Haversine distance in meters
                             R = 6371000
                             dlat = radians(p_lat - lat)
                             dlon = radians(p_lon - lon)
@@ -151,19 +170,27 @@ async def nearby_places_multi_google(
                             c = 2 * atan2(sqrt(a), sqrt(1-a))
                             distance = R * c
 
-                            results[place_type].append({
+                            filtered.append({
                                 "name": p.get("name", "Unnamed"),
                                 "lat": p_lat,
                                 "lon": p_lon,
                                 "distance": distance,
                                 "vicinity": p.get("vicinity", "")
                             })
-                    else:
-                        print(f"Google Places API error for {place_type}: {data.get('status')}")
-            except Exception as e:
-                print(f"Google Places request failed for {place_type}: {e}")
+
+                        if filtered:
+                            results[place_type] = sorted(filtered, key=lambda x: x["distance"])
+                            found = True
+                        else:
+                            # No results after filtering, increase radius
+                            current_radius += STEP
+
+                except Exception as e:
+                    print(f"Google Places request failed for {place_type}: {e}")
+                    break
+
+            # If after all attempts still no results, leave empty list
+            if not found:
                 results[place_type] = []
 
-    for t in results:
-        results[t].sort(key=lambda x: x["distance"])
     return results
